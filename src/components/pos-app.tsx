@@ -66,6 +66,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "cn";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { RupiahInput } from "@/components/rupiah-input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -1307,17 +1308,13 @@ function CheckoutDialog({
                 <>
                   <div className="flex flex-col gap-1.5">
                     <Label htmlFor="checkout-cash">Nominal uang tunai</Label>
-                    <Input
+                    <RupiahInput
                       id="checkout-cash"
                       className="h-12 text-lg tabular-nums"
-                      type="number"
-                      inputMode="numeric"
-                      min={0}
-                      step={1}
                       placeholder="Masukkan nominal"
                       autoFocus
                       value={cashInput}
-                      onChange={(event) => setCashInput(event.target.value)}
+                      onValueChange={setCashInput}
                     />
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -1809,16 +1806,18 @@ function DiscountManager({
           </div>
           <div className="flex flex-col gap-2">
             <Label>{kind === "Percent" ? "Persentase (1–100)" : "Nominal potongan (Rp)"}</Label>
-            <Input type="number" inputMode="numeric" min={1} step={1} value={value} onChange={(event) => setValue(event.target.value)} placeholder={kind === "Percent" ? "Contoh: 10" : "Contoh: 5000"} />
+            {kind === "Percent"
+              ? <Input type="number" inputMode="numeric" min={1} step={1} value={value} onChange={(event) => setValue(event.target.value)} placeholder="Contoh: 10" />
+              : <RupiahInput value={value} onValueChange={setValue} placeholder="Contoh: 5.000" />}
           </div>
           <div className="flex flex-col gap-2">
             <Label>Minimal belanja (Rp)</Label>
-            <Input type="number" inputMode="numeric" min={0} step={1} value={minSubtotal} onChange={(event) => setMinSubtotal(event.target.value)} placeholder="Kosongkan jika tidak ada" />
+            <RupiahInput value={minSubtotal} onValueChange={setMinSubtotal} placeholder="Kosongkan jika tidak ada" />
           </div>
           {kind === "Percent" && (
             <div className="flex flex-col gap-2">
               <Label>Batas potongan maksimal (Rp)</Label>
-              <Input type="number" inputMode="numeric" min={1} step={1} value={maxAmount} onChange={(event) => setMaxAmount(event.target.value)} placeholder="Kosongkan jika tanpa batas" />
+              <RupiahInput value={maxAmount} onValueChange={setMaxAmount} placeholder="Kosongkan jika tanpa batas" />
             </div>
           )}
           <div className="flex items-end md:col-span-2 xl:col-span-3">
@@ -1914,7 +1913,7 @@ function MenuRow({
       </TableCell>
       <TableCell>
         {editing
-          ? <Input aria-label={`Harga ${product.name}`} type="number" min={1000} value={price} onChange={(event) => setPrice(event.target.value)} className="w-32" />
+          ? <RupiahInput aria-label={`Harga ${product.name}`} value={price} onValueChange={setPrice} className="w-32" />
           : <span className="font-semibold">{money(product.price)}</span>}
       </TableCell>
       <TableCell>
@@ -2310,16 +2309,11 @@ function SettleReceivableDialog({
           </DialogHeader>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="settle-amount">Nominal dibayar</Label>
-            <Input
+            <RupiahInput
               id="settle-amount"
               className="h-12 text-lg tabular-nums"
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={receivable.outstanding}
-              step={1}
               value={amountInput}
-              onChange={(event) => setAmountInput(event.target.value)}
+              onValueChange={setAmountInput}
             />
             {amountInput !== "" && !validAmount && (
               <p className="text-sm text-destructive">Nominal harus antara 1 dan {money(receivable.outstanding)}.</p>
@@ -2341,16 +2335,12 @@ function SettleReceivableDialog({
           {isCash && (
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="settle-cash">Uang diterima</Label>
-              <Input
+              <RupiahInput
                 id="settle-cash"
                 className="h-12 text-lg tabular-nums"
-                type="number"
-                inputMode="numeric"
-                min={0}
-                step={1}
                 placeholder="Masukkan nominal"
                 value={cashInput}
-                onChange={(event) => setCashInput(event.target.value)}
+                onValueChange={setCashInput}
               />
               {cashShort && cashInput !== "" && <p className="text-sm font-medium text-destructive">Uang kurang {money(amount - cashReceived)}</p>}
               {validAmount && cashInput !== "" && !cashShort && (
@@ -2420,7 +2410,7 @@ function ShiftCard({ shift, pending, runAction }: { shift: CashShift | null; pen
           <form className="flex flex-col gap-4" onSubmit={openShift}>
             <div className="flex flex-col gap-2">
               <Label>Modal awal laci (Rp)</Label>
-              <Input type="number" min={0} step={1} value={openingFloat} onChange={(event) => setOpeningFloat(event.target.value)} />
+              <RupiahInput value={openingFloat} onValueChange={setOpeningFloat} />
             </div>
             <Button type="submit" disabled={pending}>Buka shift <ArrowRight data-icon="inline-end" /></Button>
           </form>
@@ -2442,7 +2432,7 @@ function ShiftCard({ shift, pending, runAction }: { shift: CashShift | null; pen
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="flex flex-col gap-2">
                   <Label>Uang dihitung di laci (Rp)</Label>
-                  <Input type="number" min={0} step={1} value={countedCash} onChange={(event) => setCountedCash(event.target.value)} />
+                  <RupiahInput value={countedCash} onValueChange={setCountedCash} />
                 </div>
                 <div className="flex flex-col gap-2">
                   <Label>Selisih</Label>
@@ -2573,7 +2563,7 @@ function ExpenseForm({
           </div>
           <div className="flex flex-col gap-2">
             <Label>Total harga (Rp)</Label>
-            <Input type="number" min={1} step={1} value={total} onChange={(event) => setTotal(event.target.value)} />
+            <RupiahInput value={total} onValueChange={setTotal} />
           </div>
           <div className="flex flex-col gap-2 sm:col-span-2">
             <Label>Catatan</Label>
@@ -3168,7 +3158,7 @@ function ExpenseApprovalCard({ data, pending, runAction }: { data: PosBootstrap;
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
         <Label>Batas (Rp)</Label>
-        <Input type="number" min={0} step={1} value={threshold} onChange={(event) => setThreshold(event.target.value)} />
+        <RupiahInput value={threshold} onValueChange={setThreshold} />
       </CardContent>
       <CardFooter>
         <Button onClick={save} disabled={pending}>Simpan batas <ArrowRight data-icon="inline-end" /></Button>
@@ -3200,7 +3190,7 @@ function KasbonLimitCard({ data, pending, runAction }: { data: PosBootstrap; pen
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
         <Label>Batas per pelanggan (Rp)</Label>
-        <Input type="number" min={0} step={1} value={limit} onChange={(event) => setLimit(event.target.value)} />
+        <RupiahInput value={limit} onValueChange={setLimit} />
       </CardContent>
       <CardFooter>
         <Button onClick={save} disabled={pending}>Simpan batas <ArrowRight data-icon="inline-end" /></Button>
@@ -3583,7 +3573,7 @@ function ProductForm({
         </div>
         <div className="flex flex-col gap-2">
           <Label>Harga jual (Rp)</Label>
-          <Input type="number" min={1000} value={price} onChange={(event) => setPrice(event.target.value)} />
+          <RupiahInput value={price} onValueChange={setPrice} />
         </div>
         <div className="flex flex-col gap-2">
           <Label>Stasiun produksi</Label>
