@@ -74,6 +74,15 @@ export type CustomerSuggestion = {
   orderCount: number;
 };
 
+export type CreditStatus = "Open" | "Settled" | "Cancelled";
+
+export type OrderCredit = {
+  status: CreditStatus;
+  total: number;
+  paid: number;
+  outstanding: number;
+};
+
 export type Order = {
   id: string;
   orderNumber: string;
@@ -82,11 +91,12 @@ export type Order = {
   customerName: string | null;
   table: string | null;
   status: "Queued" | "Preparing" | "Ready for pickup" | "Completed" | "Cancelled";
-  paymentMethod: "Cash" | "QRIS" | "Debit/Kredit" | null;
+  paymentMethod: "Cash" | "QRIS" | "Debit/Kredit" | "Kasbon" | null;
   paymentStatus: "Paid" | "Refunded" | null;
   paymentReference: string | null;
   cashReceived: number | null;
   changeAmount: number | null;
+  credit: OrderCredit | null;
   subtotal: number | null;
   discountName: string | null;
   discountKind: DiscountKind | null;
@@ -192,6 +202,7 @@ export type ManagedAccount = {
 };
 
 export type PrinterMode = "off" | "network" | "system" | "serial";
+export type TablePickerMode = "map" | "cards";
 
 export const PRINTER_BAUD_RATES = [9600, 19200, 38400, 57600, 115200] as const;
 
@@ -211,6 +222,16 @@ export type PrinterSettings = {
   drawerAutoOpen: boolean;
 };
 
+export type Receivable = {
+  orderId: string;
+  orderNumber: string;
+  createdAt: string;
+  customerName: string;
+  total: number;
+  paid: number;
+  outstanding: number;
+};
+
 export type PosBootstrap = {
   user: SessionUser;
   userAvatarUrl: string | null;
@@ -221,6 +242,7 @@ export type PosBootstrap = {
   receiptWidthMm: 58 | 80;
   receiptFooter: string;
   printer: PrinterSettings;
+  tablePickerMode: TablePickerMode;
   products: Product[];
   tables: DiningTable[];
   mapShapes: MapShape[];
@@ -234,6 +256,8 @@ export type PosBootstrap = {
   expenseIngredients: ExpenseIngredient[];
   expensePicSuggestions: string[];
   expenseApprovalThreshold: number;
+  kasbonLimit: number;
+  receivables: Receivable[];
   orders: Order[];
   movements: InventoryMovement[];
   accounts: ManagedAccount[];

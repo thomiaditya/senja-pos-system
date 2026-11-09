@@ -8,6 +8,7 @@ import { PRINTER_BAUD_RATES } from "@/lib/types";
 import type {
   CashShift,
   CashShiftBreakdown,
+  CreditStatus,
   CustomerSuggestion,
   Discount,
   DiscountKind,
@@ -19,6 +20,7 @@ import type {
   InventoryMovement,
   ManagedAccount,
   Order,
+  OrderCredit,
   OrderItem,
   PosBootstrap,
   PosSummary,
@@ -27,13 +29,16 @@ import type {
   MapShape,
   MapShapeKind,
   Product,
+  Receivable,
   SessionUser,
   StationTicket,
+  TablePickerMode,
   UserRole,
 } from "@/lib/types";
 import {
   adminPasswordResetSchema,
   createOrderSchema,
+  creditPaymentSchema,
   discountCreateSchema,
   discountUpdateSchema,
   diningTableCreateSchema,
@@ -59,6 +64,8 @@ import { listSerialPorts, sendToPrinter, type PrinterConfig } from "@/lib/printi
 import { calculateDiscountAmount, calculateOrderTotals, isDiscountEligible } from "@/lib/pricing";
 
 type OrderInput = ReturnType<typeof createOrderSchema.parse>;
+type CreditPaymentInput = ReturnType<typeof creditPaymentSchema.parse>;
+type CreditPaymentMethod = CreditPaymentInput["method"];
 type DiscountCreate = ReturnType<typeof discountCreateSchema.parse>;
 type DiscountUpdate = ReturnType<typeof discountUpdateSchema.parse>;
 type OrderAction = ReturnType<typeof orderActionSchema.parse>;
@@ -107,11 +114,14 @@ type DbOrder = {
   note: string;
   cancel_reason: string | null;
   collected_at: string | null;
-  method: Order["paymentMethod"];
+  method: Exclude<Order["paymentMethod"], "Kasbon"> | null;
   payment_status: Order["paymentStatus"];
-  reference: string;
+  reference: string | null;
   cash_received: number | null;
   change_amount: number | null;
+  credit_status: CreditStatus | null;
+  credit_total: number | null;
+  credit_paid: number | null;
 };
 
 type DbItem = {
@@ -271,6 +281,11 @@ function getCustomerSuggestions(limit: number, sort: "recent" | "frequent" = "re
   }));
 }
 
+function toOrderCredit(status: CreditStatus, total: number, paid: number): OrderCredit {
+  const outstanding = status === "Cancelled" ? 0 : total - paid;
+  return { status, total, paid, outstanding };
+}
+
 function getOrders(user: SessionUser, orderId?: string): Order[] {
   const orderWhere = orderId ? "WHERE o.id = ?" : "";
   const orderLimit = orderId ? "" : "LIMIT 100";
@@ -278,9 +293,13 @@ function getOrders(user: SessionUser, orderId?: string): Order[] {
     SELECT o.id, o.order_number, o.created_at, o.order_type, o.customer_name, o.table_number, o.status,
       o.subtotal, o.discount_name, o.discount_kind, o.discount_value, o.discount_amount,
       o.tax, o.total, o.note, o.cancel_reason, o.collected_at,
-      p.method, p.status AS payment_status, p.reference, p.cash_received, p.change_amount
+      p.method, p.status AS payment_status, p.reference, p.cash_received, p.change_amount,
+      c.status AS credit_status, c.total AS credit_total,
+      COALESCE((SELECT SUM(CASE WHEN cp.kind = 'Cicilan' THEN cp.amount ELSE -cp.amount END)
+        FROM credit_payments cp WHERE cp.credit_id = c.id), 0) AS credit_paid
     FROM orders o
-    JOIN payments p ON p.order_id = o.id
+    LEFT JOIN payments p ON p.order_id = o.id
+    LEFT JOIN credit_accounts c ON c.order_id = o.id
     ${orderWhere}
     ORDER BY o.created_at DESC
     ${orderLimit}
@@ -351,6 +370,9 @@ function getOrders(user: SessionUser, orderId?: string): Order[] {
 
   return orderRows.map((row) => {
     const tickets = ticketsByOrder.get(row.id) ?? [];
+    const credit = row.credit_status && row.credit_total !== null
+      ? toOrderCredit(row.credit_status, row.credit_total, row.credit_paid ?? 0)
+      : null;
     return {
       id: row.id,
       orderNumber: row.order_number,
@@ -359,11 +381,12 @@ function getOrders(user: SessionUser, orderId?: string): Order[] {
       customerName: stationRole ? null : row.customer_name,
       table: row.table_number,
       status: row.status,
-      paymentMethod: stationRole ? null : row.method,
+      paymentMethod: stationRole ? null : (row.method ?? (credit ? "Kasbon" : null)),
       paymentStatus: stationRole ? null : row.payment_status,
       paymentReference: stationRole ? null : row.reference,
       cashReceived: stationRole ? null : row.cash_received,
       changeAmount: stationRole ? null : row.change_amount,
+      credit: stationRole ? null : credit,
       subtotal: stationRole ? null : row.subtotal,
       discountName: stationRole ? null : row.discount_name,
       discountKind: stationRole ? null : row.discount_kind,
@@ -433,24 +456,41 @@ function getSummary(includeBusinessMetrics: boolean): PosSummary {
     };
   }
 
+  // Kasbon orders count toward revenue only through their settlements (credit_payments).
+  const KASBON_ORDER_EXISTS = "EXISTS (SELECT 1 FROM credit_accounts c WHERE c.order_id = o.id)";
   const today = outletDate();
   const sales = db.prepare(`
-    SELECT COALESCE(SUM(total), 0) AS total, COUNT(*) AS count
-    FROM orders
-    WHERE date(created_at, '+7 hours') = ? AND status != 'Cancelled'
+    SELECT COALESCE(SUM(CASE WHEN ${KASBON_ORDER_EXISTS} THEN 0 ELSE o.total END), 0) AS total, COUNT(*) AS count
+    FROM orders o
+    WHERE date(o.created_at, '+7 hours') = ? AND o.status != 'Cancelled'
   `).get(today) as { total: number; count: number };
+  const todayCredit = db.prepare(`
+    SELECT COALESCE(SUM(CASE WHEN kind = 'Cicilan' THEN amount ELSE -amount END), 0) AS total
+    FROM credit_payments WHERE date(created_at, '+7 hours') = ?
+  `).get(today) as { total: number };
   const lowStock = db.prepare(`
     SELECT COUNT(*) AS count FROM ingredients WHERE on_hand - reserved <= minimum
   `).get() as { count: number };
 
   const dailyStart = outletDate(new Date(Date.now() - 6 * 24 * 60 * 60 * 1000));
   const dailyRows = db.prepare(`
-    SELECT date(created_at, '+7 hours') AS business_date, COALESCE(SUM(total), 0) AS total
-    FROM orders
-    WHERE date(created_at, '+7 hours') BETWEEN ? AND ? AND status != 'Cancelled'
+    SELECT date(o.created_at, '+7 hours') AS business_date,
+      COALESCE(SUM(CASE WHEN ${KASBON_ORDER_EXISTS} THEN 0 ELSE o.total END), 0) AS total
+    FROM orders o
+    WHERE date(o.created_at, '+7 hours') BETWEEN ? AND ? AND o.status != 'Cancelled'
+    GROUP BY business_date
+  `).all(dailyStart, today) as { business_date: string; total: number }[];
+  const dailyCreditRows = db.prepare(`
+    SELECT date(created_at, '+7 hours') AS business_date,
+      COALESCE(SUM(CASE WHEN kind = 'Cicilan' THEN amount ELSE -amount END), 0) AS total
+    FROM credit_payments
+    WHERE date(created_at, '+7 hours') BETWEEN ? AND ?
     GROUP BY business_date
   `).all(dailyStart, today) as { business_date: string; total: number }[];
   const dailyTotals = new Map(dailyRows.map((row) => [row.business_date, row.total]));
+  for (const row of dailyCreditRows) {
+    dailyTotals.set(row.business_date, (dailyTotals.get(row.business_date) ?? 0) + row.total);
+  }
   const dailySales = Array.from({ length: 7 }, (_, index) => {
     const date = outletDate(new Date(Date.now() - (6 - index) * 24 * 60 * 60 * 1000));
     const label = new Intl.DateTimeFormat("id-ID", {
@@ -470,7 +510,7 @@ function getSummary(includeBusinessMetrics: boolean): PosSummary {
   `).all(today) as { name: string; quantity: number }[];
 
   return {
-    todaySales: sales.total,
+    todaySales: sales.total + todayCredit.total,
     todayOrders: sales.count,
     activeOrders: active.count,
     lowStockCount: lowStock.count,
@@ -495,6 +535,7 @@ export function getPosBootstrap(user: SessionUser): PosBootstrap {
     receiptWidthMm: getSetting("receipt_width_mm", "80") === "58" ? 58 : 80,
     receiptFooter: getSetting("receipt_footer", "Terima kasih telah berkunjung!"),
     printer: getPrinterSettings(),
+    tablePickerMode: getTablePickerMode(),
     products: canSell ? getProducts() : [],
     tables: getDiningTables(),
     mapShapes: getMapShapes(),
@@ -508,6 +549,8 @@ export function getPosBootstrap(user: SessionUser): PosBootstrap {
     expenseIngredients: canSell ? getExpenseIngredients() : [],
     expensePicSuggestions: canSell ? getExpensePicSuggestions() : [],
     expenseApprovalThreshold: getExpenseApprovalThreshold(),
+    kasbonLimit: getKasbonLimit(),
+    receivables: canSell ? getReceivables() : [],
     orders: getOrders(user),
     movements: isManager ? getMovements() : [],
     accounts: isManager ? getAccounts() : [],
@@ -645,6 +688,17 @@ export function createPaidOrder(user: SessionUser, rawInput: unknown): string {
     if (input.paymentMethod !== "Cash" && input.cashReceived !== null) {
       throw new ApiError(400, "Nominal uang hanya diisi untuk pembayaran tunai.", "INVALID_CASH_AMOUNT");
     }
+    if (input.paymentMethod === "Kasbon") {
+      const limit = getKasbonLimit();
+      const outstanding = getCustomerOutstanding(input.customerName);
+      if (outstanding + total > limit) {
+        throw new ApiError(
+          409,
+          `Limit kasbon ${input.customerName} terlampaui. Sisa piutang ${formatRupiah(outstanding)}, limit ${formatRupiah(limit)}.`,
+          "KASBON_LIMIT_EXCEEDED",
+        );
+      }
+    }
 
     const orderId = randomUUID();
     const orderDate = getOrderDate();
@@ -692,21 +746,28 @@ export function createPaidOrder(user: SessionUser, rawInput: unknown): string {
     if (input.paymentMethod === "Cash" && !openShift) {
       throw new ApiError(409, "Buka shift kas dulu sebelum menerima pembayaran tunai.", "SHIFT_REQUIRED");
     }
-    db.prepare(`
-      INSERT INTO payments (
-        id, order_id, method, status, amount, reference, cash_received, change_amount, created_at, shift_id
-      ) VALUES (?, ?, ?, 'Paid', ?, ?, ?, ?, ?, ?)
-    `).run(
-      randomUUID(),
-      orderId,
-      input.paymentMethod,
-      total,
-      reference,
-      input.cashReceived,
-      input.cashReceived === null ? null : input.cashReceived - total,
-      createdAt,
-      openShift?.id ?? null,
-    );
+    if (input.paymentMethod === "Kasbon") {
+      db.prepare(`
+        INSERT INTO credit_accounts (id, order_id, customer_name, total, status, created_at)
+        VALUES (?, ?, ?, ?, 'Open', ?)
+      `).run(randomUUID(), orderId, input.customerName, total, createdAt);
+    } else {
+      db.prepare(`
+        INSERT INTO payments (
+          id, order_id, method, status, amount, reference, cash_received, change_amount, created_at, shift_id
+        ) VALUES (?, ?, ?, 'Paid', ?, ?, ?, ?, ?, ?)
+      `).run(
+        randomUUID(),
+        orderId,
+        input.paymentMethod,
+        total,
+        reference,
+        input.cashReceived,
+        input.cashReceived === null ? null : input.cashReceived - total,
+        createdAt,
+        openShift?.id ?? null,
+      );
+    }
 
     const insertOrderItem = db.prepare(`
       INSERT INTO order_items (
@@ -967,10 +1028,66 @@ export function performOrderAction(user: SessionUser, id: string, rawAction: unk
       UPDATE payments SET status = 'Refunded', refunded_at = ?, refund_reference = ?
       WHERE order_id = ? AND status = 'Paid'
     `).run(nowIso(), refundReference, id);
+    const creditRefunds = refundCreditOnCancel(user.id, id);
     writeAudit(user.id, "order.cancelled", "order", id, {
       reason: action.reason,
       refundReference,
+      creditRefunds,
       wastedIngredients,
+    });
+  });
+
+  transaction();
+}
+
+export function settleCreditPayment(user: SessionUser, orderId: string, rawInput: unknown) {
+  requireRole(user, ["admin", "cashier"]);
+  const input = creditPaymentSchema.parse(rawInput) as CreditPaymentInput;
+  const transaction = db.transaction(() => {
+    const credit = db.prepare("SELECT id, status, total FROM credit_accounts WHERE order_id = ?")
+      .get(orderId) as { id: string; status: CreditStatus; total: number } | undefined;
+    if (!credit) throw new ApiError(404, "Pesanan ini bukan kasbon.", "KASBON_NOT_FOUND");
+    if (credit.status !== "Open") throw new ApiError(409, "Kasbon ini sudah tidak aktif.", "CREDIT_CLOSED");
+
+    const outstanding = credit.total - getCreditPaid(credit.id);
+    if (input.amount > outstanding) {
+      throw new ApiError(400, `Nominal melebihi sisa piutang ${formatRupiah(outstanding)}.`, "AMOUNT_EXCEEDS_OUTSTANDING");
+    }
+    const openShift = getOpenCashShiftRow();
+    if (input.method === "Cash") {
+      if (!openShift) throw new ApiError(409, "Buka shift kas dulu sebelum menerima pelunasan tunai.", "SHIFT_REQUIRED");
+      if (input.cashReceived === null || input.cashReceived < input.amount) {
+        throw new ApiError(400, "Nominal uang tunai kurang dari nominal pelunasan.", "INSUFFICIENT_CASH");
+      }
+    } else if (input.cashReceived !== null) {
+      throw new ApiError(400, "Nominal uang hanya diisi untuk pembayaran tunai.", "INVALID_CASH_AMOUNT");
+    }
+
+    const createdAt = nowIso();
+    db.prepare(`
+      INSERT INTO credit_payments (
+        id, credit_id, kind, method, amount, reference, cash_received, change_amount, shift_id, created_at, created_by
+      ) VALUES (?, ?, 'Cicilan', ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      randomUUID(),
+      credit.id,
+      input.method,
+      input.amount,
+      `SIM-KSB-${randomUUID().slice(0, 8).toUpperCase()}`,
+      input.method === "Cash" ? input.cashReceived : null,
+      input.method === "Cash" && input.cashReceived !== null ? input.cashReceived - input.amount : null,
+      input.method === "Cash" ? openShift?.id ?? null : null,
+      createdAt,
+      user.id,
+    );
+    const remaining = outstanding - input.amount;
+    if (remaining === 0) {
+      db.prepare("UPDATE credit_accounts SET status = 'Settled', settled_at = ? WHERE id = ?").run(createdAt, credit.id);
+    }
+    writeAudit(user.id, "credit.payment", "order", orderId, {
+      amount: input.amount,
+      method: input.method,
+      remaining,
     });
   });
 
@@ -1410,8 +1527,108 @@ function getExpenseApprovalThreshold() {
   return Number(getSetting("expense_approval_threshold", "500000"));
 }
 
+function getTablePickerMode(): TablePickerMode {
+  return getSetting("table_picker_mode", "map") === "cards" ? "cards" : "map";
+}
+
 function getOpenCashShiftRow() {
   return db.prepare(`${cashShiftSelect} WHERE s.closed_at IS NULL`).get() as DbShift | undefined;
+}
+
+function getKasbonLimit() {
+  return Number(getSetting("kasbon_limit", "100000"));
+}
+
+function formatRupiah(amount: number) {
+  return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(amount);
+}
+
+function getCreditPaid(creditId: string) {
+  return (db.prepare(`
+    SELECT COALESCE(SUM(CASE WHEN kind = 'Cicilan' THEN amount ELSE -amount END), 0) AS paid
+    FROM credit_payments WHERE credit_id = ?
+  `).get(creditId) as { paid: number }).paid;
+}
+
+function getCustomerOutstanding(customerName: string) {
+  return (db.prepare(`
+    SELECT COALESCE(SUM(c.total - COALESCE((
+      SELECT SUM(CASE WHEN cp.kind = 'Cicilan' THEN cp.amount ELSE -cp.amount END)
+      FROM credit_payments cp WHERE cp.credit_id = c.id
+    ), 0)), 0) AS outstanding
+    FROM credit_accounts c
+    WHERE c.status = 'Open' AND c.customer_name = ? COLLATE NOCASE
+  `).get(customerName) as { outstanding: number }).outstanding;
+}
+
+function getReceivables(): Receivable[] {
+  return (db.prepare(`
+    SELECT o.id, o.order_number, o.created_at, c.customer_name, c.total,
+      COALESCE((
+        SELECT SUM(CASE WHEN cp.kind = 'Cicilan' THEN cp.amount ELSE -cp.amount END)
+        FROM credit_payments cp WHERE cp.credit_id = c.id
+      ), 0) AS paid
+    FROM credit_accounts c
+    JOIN orders o ON o.id = c.order_id
+    WHERE c.status = 'Open'
+    ORDER BY o.created_at ASC
+  `).all() as {
+    id: string;
+    order_number: string;
+    created_at: string;
+    customer_name: string;
+    total: number;
+    paid: number;
+  }[]).map((row) => ({
+    orderId: row.id,
+    orderNumber: row.order_number,
+    createdAt: row.created_at,
+    customerName: row.customer_name,
+    total: row.total,
+    paid: row.paid,
+    outstanding: row.total - row.paid,
+  }));
+}
+
+// Refunds every cicilan of a kasbon order when it is cancelled. Cash refunds leave the drawer,
+// so they are booked to the open shift.
+function refundCreditOnCancel(actorId: string, orderId: string) {
+  const credit = db.prepare("SELECT id, status FROM credit_accounts WHERE order_id = ?")
+    .get(orderId) as { id: string; status: CreditStatus } | undefined;
+  if (!credit || credit.status === "Cancelled") return [];
+
+  const cicilan = db.prepare(`
+    SELECT method, amount FROM credit_payments WHERE credit_id = ? AND kind = 'Cicilan'
+  `).all(credit.id) as { method: CreditPaymentMethod; amount: number }[];
+  const hasCashCicilan = cicilan.some((payment) => payment.method === "Cash");
+  const openShift = getOpenCashShiftRow();
+  if (hasCashCicilan && !openShift) {
+    throw new ApiError(409, "Buka shift kas dulu sebelum membatalkan kasbon yang sudah dibayar tunai.", "SHIFT_REQUIRED");
+  }
+
+  const createdAt = nowIso();
+  const insertRefund = db.prepare(`
+    INSERT INTO credit_payments (
+      id, credit_id, kind, method, amount, reference, shift_id, created_at, created_by
+    ) VALUES (?, ?, 'Refund', ?, ?, ?, ?, ?, ?)
+  `);
+  const refunds = cicilan.map((payment) => {
+    const reference = `SIM-KSB-RF-${randomUUID().slice(0, 8).toUpperCase()}`;
+    insertRefund.run(
+      randomUUID(),
+      credit.id,
+      payment.method,
+      payment.amount,
+      reference,
+      payment.method === "Cash" ? openShift?.id ?? null : null,
+      createdAt,
+      actorId,
+    );
+    return { method: payment.method, amount: payment.amount, reference };
+  });
+  db.prepare("UPDATE credit_accounts SET status = 'Cancelled', cancelled_at = ? WHERE id = ?")
+    .run(createdAt, credit.id);
+  return refunds;
 }
 
 function calculateShiftCash(
@@ -1420,12 +1637,18 @@ function calculateShiftCash(
 ): CashShiftBreakdown & { expected: number } {
   const cashSales = (db.prepare(`
     SELECT COALESCE(SUM(amount), 0) AS total FROM payments WHERE shift_id = ? AND method = 'Cash'
+  `).get(shift.id) as { total: number }).total + (db.prepare(`
+    SELECT COALESCE(SUM(amount), 0) AS total FROM credit_payments
+    WHERE shift_id = ? AND method = 'Cash' AND kind = 'Cicilan'
   `).get(shift.id) as { total: number }).total;
   const cashRefunds = (db.prepare(`
     SELECT COALESCE(SUM(amount), 0) AS total FROM payments
     WHERE method = 'Cash' AND status = 'Refunded' AND shift_id IS NOT NULL
       AND refunded_at >= ? AND (? IS NULL OR refunded_at <= ?)
-  `).get(shift.opened_at, endAt, endAt) as { total: number }).total;
+  `).get(shift.opened_at, endAt, endAt) as { total: number }).total + (db.prepare(`
+    SELECT COALESCE(SUM(amount), 0) AS total FROM credit_payments
+    WHERE shift_id = ? AND method = 'Cash' AND kind = 'Refund'
+  `).get(shift.id) as { total: number }).total;
   const drawerExpenses = (db.prepare(`
     SELECT COALESCE(SUM(total), 0) AS total FROM expenses
     WHERE shift_id = ? AND source = 'Drawer' AND status <> 'Rejected'
@@ -1740,6 +1963,8 @@ export function updateSettings(user: SessionUser, rawUpdate: unknown) {
   if (update.expenseApprovalThreshold !== undefined) {
     upsertSetting("expense_approval_threshold", String(update.expenseApprovalThreshold));
   }
+  if (update.tablePickerMode !== undefined) upsertSetting("table_picker_mode", update.tablePickerMode);
+  if (update.kasbonLimit !== undefined) upsertSetting("kasbon_limit", String(update.kasbonLimit));
   writeAudit(user.id, "settings.updated", "settings", "store", update);
 }
 

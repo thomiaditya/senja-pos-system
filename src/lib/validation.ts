@@ -11,7 +11,7 @@ export const createOrderSchema = z.object({
   type: z.enum(["Dine-in", "Takeaway"]),
   customerName: z.string().trim().min(1, "Nama pelanggan wajib diisi.").max(60),
   table: z.string().trim().min(1).max(32).nullable(),
-  paymentMethod: z.enum(["Cash", "QRIS", "Debit/Kredit"]),
+  paymentMethod: z.enum(["Cash", "QRIS", "Debit/Kredit", "Kasbon"]),
   cashReceived: z.number().int().nonnegative().nullable(),
   discountId: z.number().int().positive().nullable(),
   note: z.string().trim().max(240),
@@ -24,6 +24,12 @@ export const createOrderSchema = z.object({
   (order) => (order.type === "Dine-in" ? Boolean(order.table) : order.table === null),
   { message: "Pesanan dine-in memerlukan meja; takeaway tidak menggunakan meja." },
 );
+
+export const creditPaymentSchema = z.object({
+  amount: z.number().int().positive().max(100_000_000_000),
+  method: z.enum(["Cash", "QRIS", "Debit/Kredit"]),
+  cashReceived: z.number().int().nonnegative().nullable(),
+});
 
 export const orderActionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("start"), station: z.enum(["Kitchen", "Barista"]) }),
@@ -150,6 +156,7 @@ export const settingsUpdateSchema = z
   .object({
     outletName: z.string().trim().min(3).max(60).optional(),
     expenseApprovalThreshold: z.number().int().min(0).max(100_000_000_000).optional(),
+    kasbonLimit: z.number().int().min(0).max(100_000_000_000).optional(),
     receiptWidthMm: z.union([z.literal(58), z.literal(80)]).optional(),
     taxRateBasisPoints: z.number().int().min(0).max(3000).optional(),
     receiptFooter: z.string().trim().max(120).optional(),
@@ -160,6 +167,7 @@ export const settingsUpdateSchema = z
     printerSerialPath: z.string().trim().max(255).regex(/^(COM[0-9]{1,3}|\/dev\/[A-Za-z0-9._-]+)?$/, "Port serial harus berbentuk COM3 (Windows) atau /dev/cu.NAMA (macOS/Linux).").optional(),
     printerBaudRate: z.number().refine((value) => (PRINTER_BAUD_RATES as readonly number[]).includes(value), "Baud rate tidak didukung.").optional(),
     drawerAutoOpen: z.boolean().optional(),
+    tablePickerMode: z.enum(["map", "cards"]).optional(),
   })
   .refine(
     (value) => Object.values(value).some((field) => field !== undefined),

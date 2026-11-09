@@ -37,6 +37,8 @@ Menu, bahan, dan denah meja yang sudah dibuat tetap dapat diubah dari halaman Me
 
 Meja disimpan di tabel `dining_tables` dan dipilih kasir dari peta saat membuat pesanan dine-in. Setiap meja ditampilkan dengan status kosong atau terisi (ada pesanan dine-in yang belum selesai).
 
+Admin dapat memilih cara kasir memilih meja di Pengaturan > **Pemilihan meja kasir**: `Denah peta` (default) atau `Kartu meja`. Kartu meja menampilkan semua meja sebagai kartu dengan status, dan tidak memerlukan denah peta. Pengaturan ini disimpan di tabel `settings` dengan kunci `table_picker_mode`.
+
 - Admin menambah meja dengan nama unik dan menyeret marker di peta untuk mengatur posisinya. Posisi tersimpan otomatis saat marker dilepas.
 - Meja yang sedang terisi tidak dapat diganti nama atau dihapus.
 - Admin menambah meja dengan nama unik dan menyeret marker di peta untuk mengatur posisinya. Posisi tersimpan otomatis saat marker dilepas.

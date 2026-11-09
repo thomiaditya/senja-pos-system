@@ -19,10 +19,13 @@ import {
   ClipboardList,
   Clock3,
   Coffee,
+  Compass,
   CreditCard,
   FileText,
+  HandCoins,
   KeyRound,
   LayoutDashboard,
+  LayoutGrid,
   LogOut,
   Minus,
   PackageCheck,
@@ -89,6 +92,7 @@ import {
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { TableMap, type MapSelection, type ShapeRect } from "@/components/table-map";
+import { GuidedTour, startGuidedTour } from "@/components/guided-tour";
 import {
   enableQueueAlarmSound,
   formatQueueElapsed,
@@ -115,7 +119,9 @@ import type {
   OrderItem,
   PosBootstrap,
   Product,
+  Receivable,
   StationTicket,
+  TablePickerMode,
   UserRole,
 } from "@/lib/types";
 
@@ -214,10 +220,10 @@ function fullDate(value: string) {
 
 function SectionTitle({ eyebrow, title, action }: { eyebrow?: string; title: string; action?: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-4">
-      <div className="space-y-1">
-        {eyebrow && <p className="text-sm font-medium text-muted-foreground">{eyebrow}</p>}
-        <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
+    <div className="flex flex-wrap items-end justify-between gap-4 pb-1">
+      <div className="space-y-2">
+        {eyebrow && <p className="text-xs font-semibold tracking-[0.18em] text-primary uppercase">{eyebrow}</p>}
+        <h1 className="text-4xl font-normal tracking-tight">{title}</h1>
       </div>
       {action}
     </div>
@@ -406,7 +412,7 @@ export function PosApp({
                   <Coffee className="size-4" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">Kopi Senja</span>
+                  <span className="truncate font-heading text-lg">Kopi Senja</span>
                   <span className="truncate text-xs text-muted-foreground">Point of Sale</span>
                 </div>
               </SidebarMenuButton>
@@ -422,7 +428,7 @@ export function PosApp({
         </SidebarHeader>
 
         <SidebarContent>
-          <SidebarGroup>
+          <SidebarGroup data-tour="sidebar-menu">
             <SidebarGroupLabel>Menu utama</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
@@ -471,7 +477,7 @@ export function PosApp({
       </Sidebar>
 
       <SidebarInset>
-        <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur">
+        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-3 border-b border-border/70 bg-background/85 px-6 backdrop-blur md:px-10">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="h-4" />
           <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm">
@@ -480,6 +486,10 @@ export function PosApp({
             <span className="font-medium">{activeLabel}</span>
           </nav>
           <div className="ml-auto flex items-center gap-3 text-sm text-muted-foreground">
+            <Button type="button" variant="outline" size="sm" onClick={() => startGuidedTour()}>
+              <Compass data-icon="inline-start" />
+              Panduan
+            </Button>
             <span className="hidden md:inline">{new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long" }).format(new Date())}</span>
             <Badge variant="outline" className="gap-1.5">
               <span className="size-1.5 rounded-full bg-emerald-500" />
@@ -488,7 +498,7 @@ export function PosApp({
           </div>
         </header>
 
-        <main className="flex flex-1 flex-col gap-6 p-4 md:p-6">
+        <main className="flex flex-1 flex-col gap-8 px-6 py-8 md:px-10 md:py-10">
           {section === "dashboard" && <Dashboard data={data} onNavigate={(target) => router.push(appPath({ section: target }))} />}
           {section === "kasir" && (
             <Cashier
@@ -533,6 +543,7 @@ export function PosApp({
           )}
         </main>
         </SidebarInset>
+        <GuidedTour role={user.role} section={section} />
       </SidebarProvider>
       </TooltipProvider>
 
@@ -571,12 +582,12 @@ function Dashboard({ data, onNavigate }: { data: PosBootstrap; onNavigate: (sect
         </div>
         <Coffee className="hidden size-14 shrink-0 text-primary-foreground/90 sm:block" strokeWidth={1.25} />
       </div>
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-2 sm:grid-cols-3" data-tour="dashboard-metrics">
         <MetricCard icon={Wallet} label="Penjualan hari ini" value={money(summary.todaySales)} note={`${summary.todayOrders} transaksi terbayar`} tone="bg-blue-100 text-blue-700" />
         <MetricCard icon={ClipboardList} label="Pesanan aktif" value={String(summary.activeOrders)} note="Menunggu atau sedang dibuat" tone="bg-sky-100 text-sky-700" />
         <MetricCard icon={PackageCheck} label="Bahan perlu dicek" value={String(summary.lowStockCount)} note={summary.lowStockCount ? "Di bawah batas minimum" : "Semua stok aman"} tone="bg-amber-100 text-amber-700" />
       </div>
-      <div className="grid gap-6 xl:grid-cols-3">
+      <div className="grid gap-2 xl:grid-cols-3">
         <Card className="xl:col-span-2">
           <CardHeader>
             <CardTitle className="text-lg">Penjualan 7 hari</CardTitle>
@@ -623,7 +634,7 @@ function Dashboard({ data, onNavigate }: { data: PosBootstrap; onNavigate: (sect
           </CardContent>
         </Card>
       </div>
-      <div className="grid gap-6 xl:grid-cols-3">
+      <div className="grid gap-2 xl:grid-cols-3">
         <Card className="xl:col-span-2">
           <CardHeader>
             <CardTitle className="text-lg">Pesanan terbaru</CardTitle>
@@ -681,7 +692,7 @@ function Dashboard({ data, onNavigate }: { data: PosBootstrap; onNavigate: (sect
   );
 }
 
-type PaymentMethod = "Cash" | "QRIS" | "Debit/Kredit";
+type PaymentMethod = "Cash" | "QRIS" | "Debit/Kredit" | "Kasbon";
 type CheckoutPayment = { customerName: string; method: PaymentMethod; cashReceived: number | null };
 
 function Cashier({
@@ -832,7 +843,7 @@ function Cashier({
           </CardContent>
         </Card>
       )}
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_420px]">
         <section className="flex min-w-0 flex-col gap-4">
           <div className="flex flex-col gap-3">
             <div className="relative">
@@ -845,7 +856,7 @@ function Cashier({
               ))}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-4" data-tour="cashier-menu">
             {products.map((product) => (
               <button
                 className="group flex flex-col gap-2 rounded-xl border bg-card p-4 text-left shadow-xs transition-colors hover:border-primary hover:bg-primary/5 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
@@ -872,7 +883,7 @@ function Cashier({
           </div>
         </section>
 
-        <Card className="sticky top-20 self-start">
+        <Card className="sticky top-20 self-start" data-tour="cashier-cart">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><ShoppingCart className="size-5 text-primary" /> Pesanan baru</CardTitle>
             <CardDescription>{cart.reduce((sum, item) => sum + item.quantity, 0)} item dalam keranjang</CardDescription>
@@ -912,15 +923,23 @@ function Cashier({
                 </Alert>
               ) : (
                 <>
-                  <TableMap
-                    tables={data.tables}
-                    shapes={data.mapShapes}
-                    selection={tableId === null ? null : { type: "table", id: tableId }}
-                    mode="kasir"
-                    onSelectTable={(picked) => setTableId(picked.id)}
-                    className="table-map-cashier"
-                  />
-                  {!selectedTable && <p className="text-sm text-muted-foreground">Klik meja di denah untuk memilihnya.</p>}
+                  {data.tablePickerMode === "cards" ? (
+                    <TableCardPicker tables={data.tables} selectedId={tableId} onSelect={setTableId} />
+                  ) : (
+                    <TableMap
+                      tables={data.tables}
+                      shapes={data.mapShapes}
+                      selection={tableId === null ? null : { type: "table", id: tableId }}
+                      mode="kasir"
+                      onSelectTable={(picked) => setTableId(picked.id)}
+                      className="table-map-cashier"
+                    />
+                  )}
+                  {!selectedTable && (
+                    <p className="text-sm text-muted-foreground">
+                      {data.tablePickerMode === "cards" ? "Pilih salah satu meja di atas." : "Klik meja di denah untuk memilihnya."}
+                    </p>
+                  )}
                   {selectedTable?.occupied && (
                     <p className="text-sm text-muted-foreground">Meja ini sedang terisi. Pesanan tambahan tetap bisa dibuat.</p>
                   )}
@@ -994,6 +1013,7 @@ function Cashier({
             </div>
             <Button
               size="lg"
+              data-tour="cashier-checkout"
               disabled={saving || pending || cart.length === 0 || (orderType === "Dine-in" && !selectedTable)}
               onClick={() => setCheckoutOpen(true)}
             >
@@ -1018,6 +1038,8 @@ function Cashier({
           taxRateLabel={(data.taxRateBasisPoints / 100).toLocaleString("id-ID")}
           customers={data.customers}
           frequentCustomers={data.frequentCustomers}
+          receivables={data.receivables}
+          kasbonLimit={data.kasbonLimit}
           saving={saving}
           cashShiftOpen={data.cashShift !== null}
           onClose={() => setCheckoutOpen(false)}
@@ -1036,6 +1058,7 @@ const PAYMENT_OPTIONS: { method: PaymentMethod; icon: typeof Wallet; hint: strin
   { method: "Cash", icon: Wallet, hint: "Terima uang tunai dan hitung kembalian" },
   { method: "QRIS", icon: QrCode, hint: "Pelanggan memindai QRIS di layar terminal" },
   { method: "Debit/Kredit", icon: CreditCard, hint: "Pembayaran kartu lewat mesin EDC" },
+  { method: "Kasbon", icon: HandCoins, hint: "Bayar nanti. Dicatat sebagai piutang pelanggan" },
 ];
 const CASH_QUICK_AMOUNTS = [20_000, 50_000, 100_000];
 const CHECKOUT_STEP_LABELS = ["Pelanggan", "Diskon", "Metode", "Pembayaran", "Konfirmasi"];
@@ -1054,6 +1077,8 @@ function CheckoutDialog({
   taxRateLabel,
   customers,
   frequentCustomers,
+  receivables,
+  kasbonLimit,
   saving,
   cashShiftOpen,
   onClose,
@@ -1072,6 +1097,8 @@ function CheckoutDialog({
   taxRateLabel: string;
   customers: CustomerSuggestion[];
   frequentCustomers: CustomerSuggestion[];
+  receivables: Receivable[];
+  kasbonLimit: number;
   saving: boolean;
   cashShiftOpen: boolean;
   onClose: () => void;
@@ -1085,15 +1112,25 @@ function CheckoutDialog({
   const [cashInput, setCashInput] = useState("");
   const cashReceived = Number(cashInput || 0);
   const isCash = method === "Cash";
+  const isKasbon = method === "Kasbon";
   const cashShort = isCash && cashReceived < total;
   const cashBlocked = isCash && !cashShiftOpen;
-  const canContinue = !(step === 0 && trimmedCustomerName === "") && !(step === 3 && (cashShort || cashBlocked));
+  // Mirrors the server rule in createPaidOrder: outstanding kasbon plus this order must not exceed the limit.
+  const customerOutstanding = trimmedCustomerName === ""
+    ? 0
+    : receivables
+      .filter((receivable) => receivable.customerName.toLowerCase() === trimmedCustomerName.toLowerCase())
+      .reduce((sum, receivable) => sum + receivable.outstanding, 0);
+  const kasbonProjected = customerOutstanding + total;
+  const kasbonOverLimit = isKasbon && kasbonProjected > kasbonLimit;
+  const canContinue = !(step === 0 && trimmedCustomerName === "")
+    && !(step === 3 && (cashShort || cashBlocked || kasbonOverLimit));
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
   const isLastStep = step === CHECKOUT_STEP_LABELS.length - 1;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (saving || (isLastStep && cashBlocked)) return;
+    if (saving || (isLastStep && (cashBlocked || kasbonOverLimit))) return;
     if (!isLastStep) {
       if (canContinue) setStep(step + 1);
       return;
@@ -1228,7 +1265,7 @@ function CheckoutDialog({
           {step === 2 && (
             <>
               <h3 className="text-lg font-semibold">Pilih metode pembayaran</h3>
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 {PAYMENT_OPTIONS.map(({ method: option, icon: Icon, hint }) => (
                   <button
                     type="button"
@@ -1250,10 +1287,23 @@ function CheckoutDialog({
           )}
           {step === 3 && (
             <>
-              <h3 className="text-lg font-semibold">{isCash ? "Uang diterima" : `Pembayaran ${method}`}</h3>
+              <h3 className="text-lg font-semibold">{isCash ? "Uang diterima" : isKasbon ? "Kasbon pelanggan" : `Pembayaran ${method}`}</h3>
               <div className="flex items-center justify-between rounded-lg bg-muted p-4"><span className="text-muted-foreground">Total tagihan</span><strong className="text-2xl tabular-nums">{money(total)}</strong></div>
               {cashBlocked && <Alert variant="destructive"><AlertDescription>Shift kas belum dibuka. Buka shift di menu Kas, atau pilih metode non-tunai.</AlertDescription></Alert>}
-              {isCash ? (
+              {isKasbon ? (
+                <>
+                  <div className="grid gap-2 rounded-lg border p-4 text-sm">
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Piutang {trimmedCustomerName} saat ini</span><span className="tabular-nums">{money(customerOutstanding)}</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Batas kasbon</span><span className="tabular-nums">{money(kasbonLimit)}</span></div>
+                    <div className="flex justify-between gap-2 font-semibold"><span>Setelah pesanan ini</span><span className="tabular-nums">{money(kasbonProjected)}</span></div>
+                  </div>
+                  {kasbonOverLimit ? (
+                    <Alert variant="destructive"><AlertDescription>Melebihi batas kasbon. Pelanggan harus melunasi sebagian piutang dulu, atau pilih metode lain.</AlertDescription></Alert>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Pesanan dicatat sebagai piutang dan dibayar nanti dari menu Kas.</p>
+                  )}
+                </>
+              ) : isCash ? (
                 <>
                   <div className="flex flex-col gap-1.5">
                     <Label htmlFor="checkout-cash">Nominal uang tunai</Label>
@@ -1295,7 +1345,8 @@ function CheckoutDialog({
                 <div className="flex justify-between gap-2"><span className="text-muted-foreground">Pelanggan</span><strong className="font-semibold">{trimmedCustomerName}</strong></div>
                 <div className="flex justify-between gap-2"><span className="text-muted-foreground">Tipe</span><strong className="font-semibold">{orderType === "Dine-in" ? "Makan di tempat" : "Bungkus"}</strong></div>
                 {orderType === "Dine-in" && <div className="flex justify-between gap-2"><span className="text-muted-foreground">Meja</span><strong className="font-semibold">{table}</strong></div>}
-                <div className="flex justify-between gap-2"><span className="text-muted-foreground">Metode</span><strong className="font-semibold">{method}</strong></div>
+                <div className="flex justify-between gap-2"><span className="text-muted-foreground">Metode</span><strong className="font-semibold">{isKasbon ? "Kasbon (belum lunas)" : method}</strong></div>
+                {isKasbon && <div className="flex justify-between gap-2"><span className="text-muted-foreground">Dibayar sekarang</span><strong className="font-semibold tabular-nums">{money(0)}</strong></div>}
                 {isCash && <div className="flex justify-between gap-2"><span className="text-muted-foreground">Uang diterima</span><strong className="font-semibold tabular-nums">{money(cashReceived)}</strong></div>}
                 {isCash && <div className="flex justify-between gap-2"><span className="text-muted-foreground">Kembalian</span><strong className="font-semibold tabular-nums">{money(cashReceived - total)}</strong></div>}
               </div>
@@ -1325,8 +1376,8 @@ function CheckoutDialog({
               <Button type="button" variant="outline" onClick={() => setStep(step - 1)} disabled={saving}>Kembali</Button>
             )}
             {isLastStep ? (
-              <Button type="submit" disabled={saving || cashBlocked}>
-                {saving ? "Memproses pembayaran..." : "Bayar & buat pesanan"} <Check data-icon="inline-end" />
+              <Button type="submit" disabled={saving || cashBlocked || kasbonOverLimit}>
+                {saving ? "Memproses pembayaran..." : isKasbon ? "Simpan sebagai kasbon" : "Bayar & buat pesanan"} <Check data-icon="inline-end" />
               </Button>
             ) : (
               <Button type="submit" disabled={!canContinue}>Lanjut <ArrowRight data-icon="inline-end" /></Button>
@@ -1431,16 +1482,16 @@ function OrdersBoard({
           <AlertDescription>Ada pesanan yang menunggu lebih dari 10 menit. Aktifkan suara alarm agar peringatan berbunyi.</AlertDescription>
         </Alert>
       )}
-      <div className="grid gap-4 xl:grid-cols-5">
+      <div className="grid gap-2 xl:grid-cols-5" data-tour="orders-board">
         {columns.map((column) => {
           const columnOrders = visibleOrders.filter((order) => order.status === column.status);
           return (
-            <section className={cn("flex min-h-72 flex-col gap-3 rounded-xl border p-3", column.tone)} key={column.status}>
+            <section className={cn("flex min-h-72 flex-col gap-2 rounded-xl border p-4", column.tone)} key={column.status}>
               <div className="flex items-center justify-between gap-2 px-1">
                 <h2 className="flex items-center gap-2 text-base font-semibold"><span className="size-2 rounded-full bg-primary" />{column.label}</h2>
                 <Badge variant="secondary" className="tabular-nums">{columnOrders.length}</Badge>
               </div>
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2">
                 {columnOrders.map((order) => (
                   <OrderCard
                     key={order.id}
@@ -1504,14 +1555,14 @@ function OrderCard({
   const level: QueueLevel = timed && now !== null ? getQueueLevel(order.createdAt, now) : "normal";
   const levelClass = level === "alarm" ? " order-card-alarm" : level === "warning" ? " order-card-warning" : "";
   return (
-    <article className={cn("order-card flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-xs", levelClass)}>
-      <div className="order-card-top flex items-start justify-between gap-3">
+    <article className={cn("order-card flex flex-col gap-3 rounded-xl border bg-card p-5 shadow-xs", levelClass)}>
+      <div className="order-card-top flex flex-col gap-2">
         <div className="flex min-w-0 flex-col gap-0.5">
-          <strong className="font-semibold">{order.orderNumber}</strong>
+          <strong className="text-sm font-semibold">{order.orderNumber}</strong>
           {order.customerName && <b className="order-customer font-semibold">{order.customerName}</b>}
           <span className="text-sm text-muted-foreground">{dateTime(order.createdAt)}</span>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           <StatusBadge status={order.status} />
           {timed && (
             <span className="queue-timer inline-flex items-center gap-1 rounded-full bg-white/85 px-2 py-0.5 text-sm font-semibold tabular-nums text-foreground" aria-label="Lama menunggu">
@@ -1558,11 +1609,11 @@ function TicketCard({
   onAction: (id: string, action: OrderAction) => Promise<Order | null>;
 }) {
   return (
-    <div className="flex flex-col gap-2 rounded-lg border bg-background p-3 text-foreground">
-      <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-2.5 rounded-lg border bg-background p-4 text-foreground">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
         <span className="text-base">{ticket.station === "Kitchen" ? "🍳" : "☕"}</span>
         <strong className="font-semibold">{ticket.station}</strong>
-        <Badge variant="outline" className="ml-auto">
+        <Badge variant="outline" className="ml-auto shrink-0">
           {ticket.status === "Queued" ? "Antrean" : ticket.status === "Preparing" ? "Diproses" : ticket.status === "Ready" ? "Siap" : "Batal"}
         </Badge>
       </div>
@@ -1638,7 +1689,7 @@ function MenuScreen({
         onSetActive={onSetDiscountActive}
         onRemove={onRemoveDiscount}
       />
-      <Card>
+      <Card data-tour="menu-catalog">
         <CardHeader>
           <CardTitle>Katalog menu</CardTitle>
           <CardDescription>Perubahan harga dan status langsung diterapkan pada kasir.</CardDescription>
@@ -1734,7 +1785,7 @@ function DiscountManager({
   }
 
   return (
-    <Card>
+    <Card data-tour="menu-discount">
       <CardHeader>
         <CardTitle>Master diskon</CardTitle>
         <CardDescription>Diskon dipilih kasir saat pembayaran. Potongan dihitung sebelum pajak.</CardDescription>
@@ -1938,13 +1989,13 @@ function InventoryScreen({
   return (
     <div className="flex flex-col gap-6">
       <SectionTitle eyebrow="Bahan baku & mutasi" title="Inventory" action={<Badge variant={lowStock ? "destructive" : "secondary"}>{lowStock ? `${lowStock} stok perlu dicek` : "Semua stok aman"}</Badge>} />
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-2 md:grid-cols-3">
         <MetricCard icon={Boxes} label="Jenis bahan" value={String(data.ingredients.length)} note="Bahan baku aktif" tone="bg-primary/10 text-primary" />
         <MetricCard icon={AlertTriangle} label="Perlu restock" value={String(lowStock)} note="Menyentuh batas minimum" tone="bg-amber-500/10 text-amber-600" />
         <MetricCard icon={ArrowDownRight} label="Mutasi tercatat" value={String(data.movements.length)} note="Riwayat terbaru" tone="bg-emerald-500/10 text-emerald-600" />
       </div>
-      <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
-        <Card>
+      <div className="grid gap-2 xl:grid-cols-[1.4fr_1fr]">
+        <Card data-tour="inventory-stock">
           <CardHeader>
             <CardTitle>Stok bahan baku</CardTitle>
             <CardDescription>Stok tersedia dihitung setelah reservasi tiket.</CardDescription>
@@ -1978,7 +2029,7 @@ function InventoryScreen({
             </Table>
           </CardContent>
         </Card>
-        <Card>
+        <Card data-tour="inventory-adjust">
           <CardHeader>
             <CardTitle>Catat perubahan stok</CardTitle>
             <CardDescription>Barang masuk atau koreksi stok opname.</CardDescription>
@@ -2090,13 +2141,13 @@ function CashScreen({ data, pending, runAction }: { data: PosBootstrap; pending:
         action={(
           <div className="flex items-center gap-2">
             <Badge variant={data.cashShift ? "default" : "secondary"}>{data.cashShift ? "Shift dibuka" : "Shift belum dibuka"}</Badge>
-            <Button type="button" variant="outline" size="sm" disabled={pending || data.printer.mode === "off"} onClick={() => openCashDrawer(runAction)}>
+            <Button type="button" variant="outline" size="sm" data-tour="cash-drawer" disabled={pending || data.printer.mode === "off"} onClick={() => openCashDrawer(runAction)}>
               Buka laci
             </Button>
           </div>
         )}
       />
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid gap-2 xl:grid-cols-2">
         <ShiftCard shift={data.cashShift} pending={pending} runAction={runAction} />
         <ExpenseForm
           shift={data.cashShift}
@@ -2108,6 +2159,12 @@ function CashScreen({ data, pending, runAction }: { data: PosBootstrap; pending:
           runAction={runAction}
         />
       </div>
+      <ReceivablesCard
+        receivables={data.receivables}
+        cashShiftOpen={data.cashShift !== null}
+        pending={pending}
+        runAction={runAction}
+      />
       <Card>
         <CardHeader>
           <CardTitle>Pengeluaran</CardTitle>
@@ -2129,6 +2186,186 @@ function CashScreen({ data, pending, runAction }: { data: PosBootstrap; pending:
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function ReceivablesCard({
+  receivables,
+  cashShiftOpen,
+  pending,
+  runAction,
+}: {
+  receivables: Receivable[];
+  cashShiftOpen: boolean;
+  pending: boolean;
+  runAction: RunAction;
+}) {
+  const [settling, setSettling] = useState<Receivable | null>(null);
+  const totalOutstanding = receivables.reduce((sum, receivable) => sum + receivable.outstanding, 0);
+  return (
+    <Card data-tour="cash-receivables">
+      <CardHeader>
+        <CardTitle>Piutang kasbon</CardTitle>
+        <CardDescription>Pesanan bayar nanti yang belum lunas · total sisa {money(totalOutstanding)}</CardDescription>
+        <CardAction><HandCoins className="size-5 text-muted-foreground" /></CardAction>
+      </CardHeader>
+      <CardContent>
+        {receivables.length === 0 ? <EmptyState text="Tidak ada piutang kasbon." /> : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Waktu</TableHead>
+                <TableHead>Pelanggan</TableHead>
+                <TableHead>Pesanan</TableHead>
+                <TableHead>Total</TableHead>
+                <TableHead>Dibayar</TableHead>
+                <TableHead>Sisa</TableHead>
+                <TableHead className="text-right">Aksi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {receivables.map((receivable) => (
+                <TableRow key={receivable.orderId}>
+                  <TableCell>{dateTime(receivable.createdAt)}</TableCell>
+                  <TableCell className="font-medium">{receivable.customerName}</TableCell>
+                  <TableCell>{receivable.orderNumber}</TableCell>
+                  <TableCell>{money(receivable.total)}</TableCell>
+                  <TableCell>{money(receivable.paid)}</TableCell>
+                  <TableCell className="font-semibold">{money(receivable.outstanding)}</TableCell>
+                  <TableCell className="text-right">
+                    <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => setSettling(receivable)}>
+                      Bayar
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+      {settling && (
+        <SettleReceivableDialog
+          key={settling.orderId}
+          receivable={settling}
+          cashShiftOpen={cashShiftOpen}
+          pending={pending}
+          runAction={runAction}
+          onClose={() => setSettling(null)}
+        />
+      )}
+    </Card>
+  );
+}
+
+const CREDIT_METHODS = ["Cash", "QRIS", "Debit/Kredit"] as const;
+type CreditMethod = (typeof CREDIT_METHODS)[number];
+
+function SettleReceivableDialog({
+  receivable,
+  cashShiftOpen,
+  pending,
+  runAction,
+  onClose,
+}: {
+  receivable: Receivable;
+  cashShiftOpen: boolean;
+  pending: boolean;
+  runAction: RunAction;
+  onClose: () => void;
+}) {
+  const [amountInput, setAmountInput] = useState(String(receivable.outstanding));
+  const [method, setMethod] = useState<CreditMethod>("Cash");
+  const [cashInput, setCashInput] = useState("");
+  const amount = Number(amountInput);
+  const validAmount = Number.isInteger(amount) && amount > 0 && amount <= receivable.outstanding;
+  const isCash = method === "Cash";
+  const cashReceived = Number(cashInput || 0);
+  const cashBlocked = isCash && !cashShiftOpen;
+  const cashShort = isCash && validAmount && cashReceived < amount;
+  const canSubmit = validAmount && !cashBlocked && !cashShort && !pending && (!isCash || cashInput !== "");
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!canSubmit) return;
+    const result = await runAction(
+      () => requestJson(`/api/orders/${receivable.orderId}/credit-payment`, "POST", {
+        amount,
+        method,
+        cashReceived: isCash ? cashReceived : null,
+      }),
+      amount === receivable.outstanding ? "Kasbon lunas." : "Cicilan kasbon dicatat.",
+    );
+    if (result !== null) onClose();
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => {
+      if (!open && !pending) onClose();
+    }}>
+      <DialogContent className="sm:max-w-md">
+        <form className="flex flex-col gap-4" onSubmit={submit}>
+          <DialogHeader>
+            <DialogTitle>Bayar kasbon</DialogTitle>
+            <DialogDescription>{receivable.customerName} · {receivable.orderNumber} · sisa {money(receivable.outstanding)}</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="settle-amount">Nominal dibayar</Label>
+            <Input
+              id="settle-amount"
+              className="h-12 text-lg tabular-nums"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={receivable.outstanding}
+              step={1}
+              value={amountInput}
+              onChange={(event) => setAmountInput(event.target.value)}
+            />
+            {amountInput !== "" && !validAmount && (
+              <p className="text-sm text-destructive">Nominal harus antara 1 dan {money(receivable.outstanding)}.</p>
+            )}
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {CREDIT_METHODS.map((option) => (
+              <Button
+                type="button"
+                key={option}
+                variant={method === option ? "default" : "outline"}
+                aria-pressed={method === option}
+                onClick={() => setMethod(option)}
+              >
+                {option}
+              </Button>
+            ))}
+          </div>
+          {isCash && (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="settle-cash">Uang diterima</Label>
+              <Input
+                id="settle-cash"
+                className="h-12 text-lg tabular-nums"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={1}
+                placeholder="Masukkan nominal"
+                value={cashInput}
+                onChange={(event) => setCashInput(event.target.value)}
+              />
+              {cashShort && cashInput !== "" && <p className="text-sm font-medium text-destructive">Uang kurang {money(amount - cashReceived)}</p>}
+              {validAmount && cashInput !== "" && !cashShort && (
+                <div className="flex items-center justify-between rounded-lg bg-primary/10 p-3 text-primary"><span>Kembalian</span><strong className="tabular-nums">{money(cashReceived - amount)}</strong></div>
+              )}
+            </div>
+          )}
+          {cashBlocked && <Alert variant="destructive"><AlertDescription>Shift kas belum dibuka. Buka shift untuk menerima pembayaran tunai.</AlertDescription></Alert>}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose} disabled={pending}>Batal</Button>
+            <Button type="submit" disabled={!canSubmit}>{pending ? "Memproses..." : "Catat pembayaran"}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -2172,7 +2409,7 @@ function ShiftCard({ shift, pending, runAction }: { shift: CashShift | null; pen
   }
 
   return (
-    <Card>
+    <Card data-tour="cash-shift">
       <CardHeader>
         <CardTitle>Shift kas</CardTitle>
         <CardDescription>{shift ? `Dibuka ${dateTime(shift.openedAt)} oleh ${shift.openedByName}` : "Buka shift sebelum menerima pembayaran tunai."}</CardDescription>
@@ -2289,7 +2526,7 @@ function ExpenseForm({
   }
 
   return (
-    <Card>
+    <Card data-tour="cash-expenses">
       <CardHeader>
         <CardTitle>Catat pengeluaran</CardTitle>
         <CardDescription>Belanja stok otomatis menambah stok bahan.</CardDescription>
@@ -2480,13 +2717,13 @@ function ReportsScreen({ data }: { data: PosBootstrap }) {
   return (
     <div className="flex flex-col gap-6">
       <SectionTitle eyebrow="Performa bisnis" title="Laporan" action={<Badge variant="secondary">7 hari terakhir</Badge>} />
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-2 md:grid-cols-3">
         <MetricCard icon={Wallet} label="Penjualan hari ini" value={money(summary.todaySales)} note={`${summary.todayOrders} transaksi non-batal`} tone="bg-emerald-500/10 text-emerald-600" />
         <MetricCard icon={ChartNoAxesCombined} label="Rata-rata per hari" value={money(Math.round(summary.dailySales.reduce((sum, sale) => sum + sale.total, 0) / 7))} note="7 hari terakhir" tone="bg-primary/10 text-primary" />
         <MetricCard icon={ClipboardList} label="Pesanan aktif" value={String(summary.activeOrders)} note="Belum selesai diambil" tone="bg-amber-500/10 text-amber-600" />
       </div>
-      <div className="grid gap-6 xl:grid-cols-[1.6fr_1fr]">
-        <Card>
+      <div className="grid gap-2 xl:grid-cols-[1.6fr_1fr]">
+        <Card data-tour="reports-trend">
           <CardHeader>
             <CardTitle>Tren penjualan</CardTitle>
             <CardDescription>Nilai transaksi per hari</CardDescription>
@@ -2763,7 +3000,7 @@ function AccountsCard({ data, pending, runAction }: { data: PosBootstrap; pendin
   }
 
   return (
-    <Card className="lg:col-span-2">
+    <Card className="lg:col-span-2" data-tour="settings-accounts">
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><Users className="size-5 text-muted-foreground" /> Kelola akun</CardTitle>
         <CardDescription>Atur ulang password akun karyawan jika mereka lupa. Password akun Anda sendiri diubah di bagian Akun saya.</CardDescription>
@@ -2823,11 +3060,11 @@ function SettingsScreen({
   return (
     <div className="flex flex-col gap-6">
       <SectionTitle eyebrow="KONFIGURASI OUTLET" title="Pengaturan" />
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-2 lg:grid-cols-2">
         <StoreProfileCard data={data} pending={pending} runAction={runAction} />
         <AccountCard data={data} pending={pending} runAction={runAction} />
         <AccountsCard data={data} pending={pending} runAction={runAction} />
-        <Card>
+        <Card data-tour="settings-printing">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Printer className="size-5 text-muted-foreground" /> Pencetakan nota</CardTitle>
             <CardDescription>Atur lebar kertas printer thermal. Lebar ini juga dipakai saat cetak langsung dari server.</CardDescription>
@@ -2853,12 +3090,14 @@ function SettingsScreen({
           </CardFooter>
         </Card>
         <ExpenseApprovalCard data={data} pending={pending} runAction={runAction} />
+        <KasbonLimitCard data={data} pending={pending} runAction={runAction} />
+        <TablePickerCard data={data} pending={pending} runAction={runAction} />
         <PrinterCard data={data} pending={pending} runAction={runAction} />
         <TaxReceiptCard data={data} pending={pending} runAction={runAction} />
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Store className="size-5 text-muted-foreground" /> Denah meja</CardTitle>
-            <CardDescription>Atur meja dan posisinya di peta outlet. Kasir memilih meja dari denah yang sama.</CardDescription>
+            <CardDescription>Atur meja dan posisinya di peta outlet. Kasir memilih meja dari {data.tablePickerMode === "cards" ? "kartu meja" : "denah yang sama"}.</CardDescription>
           </CardHeader>
           <CardContent>
             <TableLayoutEditor tables={data.tables} shapes={data.mapShapes} pending={pending} runAction={runAction} />
@@ -2935,6 +3174,96 @@ function ExpenseApprovalCard({ data, pending, runAction }: { data: PosBootstrap;
         <Button onClick={save} disabled={pending}>Simpan batas <ArrowRight data-icon="inline-end" /></Button>
       </CardFooter>
     </Card>
+  );
+}
+
+function KasbonLimitCard({ data, pending, runAction }: { data: PosBootstrap; pending: boolean; runAction: RunAction }) {
+  const [limit, setLimit] = useState(String(data.kasbonLimit));
+
+  function save() {
+    const value = Number(limit);
+    if (!Number.isInteger(value) || value < 0) {
+      toast.error("Batas harus angka bulat, minimal 0.");
+      return;
+    }
+    return runAction(
+      () => requestJson("/api/settings", "PATCH", { kasbonLimit: value }),
+      "Batas kasbon disimpan.",
+    );
+  }
+
+  return (
+    <Card data-tour="settings-kasbon">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><HandCoins className="size-5 text-muted-foreground" /> Batas kasbon</CardTitle>
+        <CardDescription>Total piutang per pelanggan (nama sama) tidak boleh melebihi batas ini, termasuk pesanan baru.</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2">
+        <Label>Batas per pelanggan (Rp)</Label>
+        <Input type="number" min={0} step={1} value={limit} onChange={(event) => setLimit(event.target.value)} />
+      </CardContent>
+      <CardFooter>
+        <Button onClick={save} disabled={pending}>Simpan batas <ArrowRight data-icon="inline-end" /></Button>
+      </CardFooter>
+    </Card>
+  );
+}
+
+function TablePickerCard({ data, pending, runAction }: { data: PosBootstrap; pending: boolean; runAction: RunAction }) {
+  const [mode, setMode] = useState<TablePickerMode>(data.tablePickerMode);
+
+  return (
+    <Card data-tour="settings-table-picker">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><LayoutGrid className="size-5 text-muted-foreground" /> Pemilihan meja kasir</CardTitle>
+        <CardDescription>Pilih cara kasir memilih meja. Kartu meja bisa dipakai tanpa denah peta.</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2">
+        <Label>Tampilan</Label>
+        <Select value={mode} onValueChange={(next) => setMode((next ?? "map") as TablePickerMode)}>
+          <SelectTrigger className="w-full">
+            <SelectValue>{(value: string) => (value === "cards" ? "Kartu meja" : "Denah peta")}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="map">Denah peta</SelectItem>
+            <SelectItem value="cards">Kartu meja</SelectItem>
+          </SelectContent>
+        </Select>
+      </CardContent>
+      <CardFooter>
+        <Button
+          onClick={() => runAction(() => requestJson("/api/settings", "PATCH", { tablePickerMode: mode }), "Mode pemilihan meja disimpan.")}
+          disabled={pending || mode === data.tablePickerMode}
+        >
+          Simpan mode <ArrowRight data-icon="inline-end" />
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+}
+
+function TableCardPicker({ tables, selectedId, onSelect }: { tables: DiningTable[]; selectedId: number | null; onSelect: (id: number) => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      {tables.map((table) => {
+        const selected = table.id === selectedId;
+        return (
+          <button
+            type="button"
+            key={table.id}
+            aria-pressed={selected}
+            onClick={() => onSelect(table.id)}
+            className={cn(
+              "flex flex-col items-start gap-2 rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted/50",
+              selected && "border-primary ring-2 ring-primary/30",
+            )}
+          >
+            <span className="font-medium">{table.name}</span>
+            <Badge variant={table.occupied ? "secondary" : "outline"}>{table.occupied ? "Terisi" : "Kosong"}</Badge>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -3029,7 +3358,7 @@ function PrinterCard({ data, pending, runAction }: { data: PosBootstrap; pending
   }
 
   return (
-    <Card>
+    <Card data-tour="settings-printer">
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><Printer className="size-5 text-muted-foreground" /> Printer thermal (server)</CardTitle>
         <CardDescription>Nota dan tiket dikirim langsung dari server ke printer. Pilih Nonaktif untuk memakai cetak lewat browser saja.</CardDescription>
@@ -3472,7 +3801,7 @@ function TableLayoutEditor({ tables, shapes, pending, runAction }: {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
+    <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_280px]">
       <TableMap
         tables={tables}
         shapes={shapes}
@@ -3698,7 +4027,7 @@ function SetupWizard({ data, pending, runAction }: { data: PosBootstrap; pending
           <>
             <div className="flex flex-col gap-1">
               <span className="text-xs font-medium tracking-widest text-primary">LANGKAH 1 DARI 5</span>
-              <h1 className="text-2xl font-semibold tracking-tight">Profil toko</h1>
+              <h1 className="text-4xl font-normal tracking-tight">Profil toko</h1>
               <p className="text-muted-foreground">Nama, logo, pajak, dan struk tampil di sidebar, nota, dan tiket cetak.</p>
             </div>
             <div className="flex flex-wrap items-center gap-4">
@@ -3748,7 +4077,7 @@ function SetupWizard({ data, pending, runAction }: { data: PosBootstrap; pending
           <>
             <div className="flex flex-col gap-1">
               <span className="text-xs font-medium tracking-widest text-primary">LANGKAH 2 DARI 5</span>
-              <h1 className="text-2xl font-semibold tracking-tight">Bahan baku</h1>
+              <h1 className="text-4xl font-normal tracking-tight">Bahan baku</h1>
               <p className="text-muted-foreground">Bahan dipakai sebagai resep menu. Minimal tambahkan satu bahan sebelum lanjut.</p>
             </div>
             <div className="flex flex-col divide-y rounded-lg border">
@@ -3774,7 +4103,7 @@ function SetupWizard({ data, pending, runAction }: { data: PosBootstrap; pending
           <>
             <div className="flex flex-col gap-1">
               <span className="text-xs font-medium tracking-widest text-primary">LANGKAH 3 DARI 5</span>
-              <h1 className="text-2xl font-semibold tracking-tight">Menu</h1>
+              <h1 className="text-4xl font-normal tracking-tight">Menu</h1>
               <p className="text-muted-foreground">Setiap menu wajib punya stasiun produksi dan resep bahan. Minimal satu menu aktif.</p>
             </div>
             <div className="flex flex-col divide-y rounded-lg border">
@@ -3801,7 +4130,7 @@ function SetupWizard({ data, pending, runAction }: { data: PosBootstrap; pending
           <>
             <div className="flex flex-col gap-1">
               <span className="text-xs font-medium tracking-widest text-primary">LANGKAH 4 DARI 5</span>
-              <h1 className="text-2xl font-semibold tracking-tight">Denah meja</h1>
+              <h1 className="text-4xl font-normal tracking-tight">Denah meja</h1>
               <p className="text-muted-foreground">Tambahkan meja dan letakkan sesuai posisi di outlet. Kasir memilih meja dari denah ini. Langkah ini bisa dilewati jika outlet hanya melayani takeaway.</p>
             </div>
             <TableLayoutEditor tables={data.tables} shapes={data.mapShapes} pending={pending} runAction={runAction} />
@@ -3815,7 +4144,7 @@ function SetupWizard({ data, pending, runAction }: { data: PosBootstrap; pending
           <>
             <div className="flex flex-col gap-1">
               <span className="text-xs font-medium tracking-widest text-primary">LANGKAH 5 DARI 5</span>
-              <h1 className="text-2xl font-semibold tracking-tight">Selesai</h1>
+              <h1 className="text-4xl font-normal tracking-tight">Selesai</h1>
               <p className="text-muted-foreground">Data ini langsung dipakai di kasir, pesanan, dan inventory setelah setup selesai.</p>
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">

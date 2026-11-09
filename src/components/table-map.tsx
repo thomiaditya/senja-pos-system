@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { LayerGroup, Map as LeafletMap, Marker, Polygon } from "leaflet";
+import type { LayerGroup, Map as LeafletMap, Marker, Polygon, ZoomAnimEvent } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { DiningTable, MapShape, MapShapeKind } from "@/lib/types";
 
@@ -253,6 +253,16 @@ export function TableMap({
       }
 
       map.fitBounds(BOUNDS, { padding: [16, 16] });
+
+      // Table markers are HTML, so they scale with the zoom level manually to match the grid.
+      const baseZoom = map.getZoom();
+      const applyMarkerScale = (zoom: number) => {
+        container.style.setProperty("--table-marker-scale", String(2 ** (zoom - baseZoom)));
+      };
+      map.on("zoomanim", (event: ZoomAnimEvent) => applyMarkerScale(event.zoom));
+      map.on("zoomend", () => applyMarkerScale(map?.getZoom() ?? baseZoom));
+      applyMarkerScale(baseZoom);
+
       map.on("click", (event) => {
         const target = event.originalEvent.target as Element | null;
         if (target?.closest(".leaflet-interactive, .leaflet-marker-icon")) return;

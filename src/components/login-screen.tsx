@@ -41,13 +41,12 @@ export function LoginScreen({ next }: { next: string | null }) {
         <div className="flex items-center gap-3">
           <div className="flex size-10 items-center justify-center rounded-lg bg-white/15"><Coffee className="size-5" /></div>
           <div className="flex flex-col">
-            <strong className="text-lg font-semibold">Kopi Senja</strong>
-            <span className="text-xs tracking-widest text-primary-foreground/70">POINT OF SALE</span>
+            <strong className="font-heading text-xl font-normal">Kopi Senja</strong>
           </div>
         </div>
         <div className="flex flex-col gap-4">
           <span className="text-xs font-medium tracking-widest text-primary-foreground/70">OPERASIONAL OUTLET</span>
-          <h1 className="text-4xl font-semibold leading-tight tracking-tight">
+          <h1 className="font-heading text-5xl leading-tight font-normal tracking-tight">
             Semua pesanan,<br />
             <em className="not-italic text-primary-foreground/80">di satu tempat.</em>
           </h1>
@@ -59,14 +58,14 @@ export function LoginScreen({ next }: { next: string | null }) {
       </div>
 
       <section className="flex flex-col justify-between p-6 sm:p-12">
-        <Card className="mx-auto w-full max-w-sm gap-6 border-0 p-0 shadow-none ring-0">
+        <Card className="mx-auto w-full max-w-sm gap-6 overflow-visible border-0 bg-transparent p-0 shadow-none ring-0">
           <div className="flex items-center gap-3 lg:hidden">
             <div className="flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground"><Coffee className="size-5" /></div>
-            <strong className="text-lg font-semibold">Kopi Senja</strong>
+            <strong className="font-heading text-xl font-normal">Kopi Senja</strong>
           </div>
           <CardHeader className="gap-1 px-0">
             <span className="text-xs font-medium tracking-widest text-primary">SELAMAT DATANG KEMBALI</span>
-            <CardTitle className="text-2xl font-semibold tracking-tight">Masuk ke akun</CardTitle>
+            <CardTitle className="font-heading text-3xl font-normal tracking-tight">Masuk ke akun</CardTitle>
             <CardDescription>Gunakan akun demo yang dibuat saat setup database.</CardDescription>
           </CardHeader>
           <CardContent className="px-0">

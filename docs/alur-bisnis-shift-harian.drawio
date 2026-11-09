@@ -1,0 +1,211 @@
+<mxfile host="65bd71144e">
+    <diagram id="alur-shift-harian" name="Alur Shift Harian">
+        <mxGraphModel dx="990" dy="884" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1840" pageHeight="1080" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="title" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=22;fontStyle=1;fontColor=#17324D;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="Alur Bisnis Shift Harian - Kopi Senja" vertex="1">
+                    <mxGeometry height="36" width="1760" x="40" y="14" as="geometry"/>
+                </mxCell>
+                <mxCell id="subtitle" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=13;fontColor=#475569;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="Dari buka shift sampai tutup shift. Fokus pada alur kerja bisnis, bukan teknis." vertex="1">
+                    <mxGeometry height="24" width="1760" x="40" y="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="lane-admin-lbl" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1E3A8A;fontColor=#FFFFFF;fontStyle=1;fontSize=14;strokeColor=none;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="ADMIN" vertex="1">
+                    <mxGeometry height="165" width="140" x="40" y="145" as="geometry"/>
+                </mxCell>
+                <mxCell id="lane-admin" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#CBD5E1;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="" vertex="1">
+                    <mxGeometry height="165" width="1620" x="180" y="145" as="geometry"/>
+                </mxCell>
+                <mxCell id="lane-kasir-lbl" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0F766E;fontColor=#FFFFFF;fontStyle=1;fontSize=14;strokeColor=none;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="KASIR" vertex="1">
+                    <mxGeometry height="240" width="140" x="40" y="310" as="geometry"/>
+                </mxCell>
+                <mxCell id="lane-kasir" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CBD5E1;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="" vertex="1">
+                    <mxGeometry height="240" width="1620" x="180" y="310" as="geometry"/>
+                </mxCell>
+                <mxCell id="lane-barista-lbl" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#B45309;fontColor=#FFFFFF;fontStyle=1;fontSize=14;strokeColor=none;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="BARISTA" vertex="1">
+                    <mxGeometry height="160" width="140" x="40" y="550" as="geometry"/>
+                </mxCell>
+                <mxCell id="lane-barista" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#CBD5E1;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="" vertex="1">
+                    <mxGeometry height="160" width="1620" x="180" y="550" as="geometry"/>
+                </mxCell>
+                <mxCell id="lane-kitchen-lbl" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#B91C1C;fontColor=#FFFFFF;fontStyle=1;fontSize=14;strokeColor=none;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="KITCHEN" vertex="1">
+                    <mxGeometry height="165" width="140" x="40" y="710" as="geometry"/>
+                </mxCell>
+                <mxCell id="lane-kitchen" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CBD5E1;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="" vertex="1">
+                    <mxGeometry height="165" width="1620" x="180" y="710" as="geometry"/>
+                </mxCell>
+                <mxCell id="h1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2563EB;fontColor=#FFFFFF;fontStyle=1;fontSize=14;strokeColor=none;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="1 · Buka Shift" vertex="1">
+                    <mxGeometry height="40" width="300" x="190" y="95" as="geometry"/>
+                </mxCell>
+                <mxCell id="h2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2563EB;fontColor=#FFFFFF;fontStyle=1;fontSize=14;strokeColor=none;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="2 · Pesanan dan Pembayaran" vertex="1">
+                    <mxGeometry height="40" width="300" x="510" y="95" as="geometry"/>
+                </mxCell>
+                <mxCell id="h3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2563EB;fontColor=#FFFFFF;fontStyle=1;fontSize=14;strokeColor=none;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="3 · Produksi dan Serah" vertex="1">
+                    <mxGeometry height="40" width="300" x="830" y="95" as="geometry"/>
+                </mxCell>
+                <mxCell id="h4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2563EB;fontColor=#FFFFFF;fontStyle=1;fontSize=14;strokeColor=none;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="4 · Belanja dan Pembatalan" vertex="1">
+                    <mxGeometry height="40" width="300" x="1150" y="95" as="geometry"/>
+                </mxCell>
+                <mxCell id="h5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2563EB;fontColor=#FFFFFF;fontStyle=1;fontSize=14;strokeColor=none;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="5 · Tutup Shift" vertex="1">
+                    <mxGeometry height="40" width="300" x="1470" y="95" as="geometry"/>
+                </mxCell>
+                <mxCell id="A1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2563EB;fontColor=#17324D;fontSize=12;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="Cek menu, harga, dan diskon;&lt;br&gt;pantau kesiapan bahan" vertex="1">
+                    <mxGeometry height="56" width="280" x="200" y="240" as="geometry"/>
+                </mxCell>
+                <mxCell id="A3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2563EB;fontColor=#17324D;fontSize=12;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="Setujui atau tolak belanja di atas batas.&lt;br&gt;Batalkan pesanan (wajib alasan)." vertex="1">
+                    <mxGeometry height="64" width="280" x="1160" y="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="A4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2563EB;fontColor=#17324D;fontSize=12;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="Setujui selisih kas (admin / SPV)" vertex="1">
+                    <mxGeometry height="56" width="280" x="1480" y="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="A5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DCFCE7;strokeColor=#15803D;fontColor=#14532D;fontSize=12;fontStyle=1;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="Shift selesai, laporan tersimpan" vertex="1">
+                    <mxGeometry height="56" width="280" x="1480" y="240" as="geometry"/>
+                </mxCell>
+                <mxCell id="K1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0F766E;fontColor=#17324D;fontSize=12;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="Login dan input modal awal laci" vertex="1">
+                    <mxGeometry height="56" width="280" x="200" y="330" as="geometry"/>
+                </mxCell>
+                <mxCell id="K2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0F766E;fontColor=#17324D;fontSize=12;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="Shift kas dibuka (hanya 1 shift aktif)" vertex="1">
+                    <mxGeometry height="56" width="280" x="200" y="410" as="geometry"/>
+                </mxCell>
+                <mxCell id="K3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0F766E;fontColor=#17324D;fontSize=12;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="Catat pesanan dan pilih meja / layanan" vertex="1">
+                    <mxGeometry height="56" width="280" x="520" y="330" as="geometry"/>
+                </mxCell>
+                <mxCell id="K4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0F766E;fontColor=#17324D;fontSize=12;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="Hitung total: pajak, layanan, diskon" vertex="1">
+                    <mxGeometry height="56" width="280" x="520" y="410" as="geometry"/>
+                </mxCell>
+                <mxCell id="K5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0F766E;fontColor=#17324D;fontSize=12;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="Pelanggan bayar (gagal: ulangi atau batal)" vertex="1">
+                    <mxGeometry height="56" width="280" x="520" y="488" as="geometry"/>
+                </mxCell>
+                <mxCell id="K6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0F766E;fontColor=#17324D;fontSize=12;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="Pembayaran sah: tiket dikirim ke barista dan kitchen" vertex="1">
+                    <mxGeometry height="56" width="280" x="840" y="488" as="geometry"/>
+                </mxCell>
+                <mxCell id="K7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0F766E;fontColor=#17324D;fontSize=12;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="Pesanan lengkap: serahkan ke pelanggan (COMPLETED)" vertex="1">
+                    <mxGeometry height="56" width="280" x="840" y="330" as="geometry"/>
+                </mxCell>
+                <mxCell id="KB1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0F766E;fontColor=#17324D;fontSize=12;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="Belanja dari laci: PIC, bahan, nominal, nota" vertex="1">
+                    <mxGeometry height="56" width="280" x="1160" y="330" as="geometry"/>
+                </mxCell>
+                <mxCell id="KB2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0F766E;fontColor=#17324D;fontSize=12;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="Pesanan dibatalkan: minta admin (alasan wajib)" vertex="1">
+                    <mxGeometry height="56" width="280" x="1160" y="410" as="geometry"/>
+                </mxCell>
+                <mxCell id="K8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0F766E;fontColor=#17324D;fontSize=12;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="Pastikan semua pesanan sudah selesai (wajib)" vertex="1">
+                    <mxGeometry height="56" width="280" x="1480" y="330" as="geometry"/>
+                </mxCell>
+                <mxCell id="K9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0F766E;fontColor=#17324D;fontSize=12;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="Hitung uang fisik di laci" vertex="1">
+                    <mxGeometry height="56" width="280" x="1480" y="410" as="geometry"/>
+                </mxCell>
+                <mxCell id="K10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0F766E;fontColor=#17324D;fontSize=12;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="Isi catatan selisih, ajukan tutup shift" vertex="1">
+                    <mxGeometry height="56" width="280" x="1480" y="488" as="geometry"/>
+                </mxCell>
+                <mxCell id="B1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#B45309;fontColor=#17324D;fontSize=12;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="Bar siapkan alat dan bahan (boleh sebelum shift dibuka)" vertex="1">
+                    <mxGeometry height="56" width="280" x="200" y="575" as="geometry"/>
+                </mxCell>
+                <mxCell id="B2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#B45309;fontColor=#17324D;fontSize=12;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="Terima tiket, mulai buat (stok dikurangi)" vertex="1">
+                    <mxGeometry height="56" width="280" x="840" y="575" as="geometry"/>
+                </mxCell>
+                <mxCell id="B3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#B45309;fontColor=#17324D;fontSize=12;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="Minuman siap, kasir serahkan" vertex="1">
+                    <mxGeometry height="56" width="280" x="840" y="650" as="geometry"/>
+                </mxCell>
+                <mxCell id="C1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#B91C1C;fontColor=#17324D;fontSize=12;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="Dapur siapkan alat dan bahan (boleh sebelum shift dibuka)" vertex="1">
+                    <mxGeometry height="56" width="280" x="200" y="730" as="geometry"/>
+                </mxCell>
+                <mxCell id="C2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#B91C1C;fontColor=#17324D;fontSize=12;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="Terima tiket, mulai masak (stok dikurangi)" vertex="1">
+                    <mxGeometry height="56" width="280" x="840" y="730" as="geometry"/>
+                </mxCell>
+                <mxCell id="C3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#B91C1C;fontColor=#17324D;fontSize=12;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="Makanan siap, kasir serahkan" vertex="1">
+                    <mxGeometry height="56" width="280" x="840" y="800" as="geometry"/>
+                </mxCell>
+                <mxCell id="E1" edge="1" parent="1" source="A1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#1E3A8A;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" target="K1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="E2" edge="1" parent="1" source="K1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#0F766E;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" target="K2">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="E3" edge="1" parent="1" source="K2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#0F766E;strokeWidth=1.5;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" target="K3">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="500" y="438"/>
+                            <mxPoint x="500" y="358"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="E4" edge="1" parent="1" source="K3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#0F766E;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" target="K4">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="E5" edge="1" parent="1" source="K4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#0F766E;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" target="K5">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="E6" edge="1" parent="1" source="K5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#0F766E;strokeWidth=1.5;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" target="K6">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="E7" edge="1" parent="1" source="K6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#B45309;strokeWidth=1.5;fontSize=11;fontColor=#B45309;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" target="B2" value="Tiket minuman">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="E8" edge="1" parent="1" source="K6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#B91C1C;strokeWidth=1.5;fontSize=11;fontColor=#B91C1C;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" target="C2" value="Tiket makanan">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1140" y="516"/>
+                            <mxPoint x="1140" y="758"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="E9" edge="1" parent="1" source="B2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#B45309;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" target="B3">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="E10" edge="1" parent="1" source="C2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#B91C1C;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" target="C3">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="E11" edge="1" parent="1" source="B3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#B45309;strokeWidth=1.5;fontSize=11;fontColor=#B45309;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" target="K7" value="Siap">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="820" y="678"/>
+                            <mxPoint x="820" y="358"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="E12" edge="1" parent="1" source="C3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#B91C1C;strokeWidth=1.5;fontSize=11;fontColor=#B91C1C;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" target="K7" value="Siap">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="820" y="828"/>
+                            <mxPoint x="820" y="358"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="E13" edge="1" parent="1" source="KB1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#1E3A8A;strokeWidth=1.5;fontSize=11;fontColor=#1E3A8A;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" target="A3" value="Belanja di atas batas">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="E14" edge="1" parent="1" source="KB2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#DC2626;strokeWidth=1.5;dashed=1;fontSize=11;fontColor=#DC2626;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" target="A3" value="Pembatalan">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1460" y="438"/>
+                            <mxPoint x="1460" y="192"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="E15" edge="1" parent="1" source="K8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#0F766E;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" target="K9">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="E16" edge="1" parent="1" source="K9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#0F766E;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" target="K10">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="E17" edge="1" parent="1" source="K10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#D97706;strokeWidth=1.5;dashed=1;fontSize=11;fontColor=#B45309;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" target="A4" value="Selisih kas">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1780" y="516"/>
+                            <mxPoint x="1780" y="188"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="E18" edge="1" parent="1" source="A4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#1E3A8A;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" target="A5">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="rules" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;spacing=12;fillColor=#FEF3C7;strokeColor=#D97706;fontColor=#17324D;fontSize=12;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="&lt;b&gt;Aturan kunci (bisnis)&lt;/b&gt;&lt;br&gt;• Sudah ada di aplikasi: hanya 1 shift kas terbuka dalam satu waktu. Pesanan dibayar dulu, baru dikirim ke barista dan kitchen.&lt;br&gt;• Sudah ada di aplikasi: pembatalan hanya oleh admin. Pesanan yang sudah dibayar otomatis di-refund dan stok bahan yang terpakai dicatat sebagai waste.&lt;br&gt;• Sudah ada di aplikasi: belanja di atas batas menunggu persetujuan admin. Belanja yang ditolak tidak mengurangi kas.&lt;br&gt;• Keputusan: barista dan kitchen boleh menyiapkan alat sebelum shift dibuka.&lt;br&gt;• Keputusan: shift hanya bisa ditutup setelah semua pesanan selesai.&lt;br&gt;• Keputusan: selisih kas harus disetujui admin (SPV) sebelum shift dinyatakan selesai.&lt;br&gt;• Rekomendasi (belum ada di aplikasi): pembatalan wajib mengisi alasan, dan status CLOSED_WITH_VARIANCE untuk shift yang berselisih." vertex="1">
+                    <mxGeometry height="139" width="1760" x="40" y="895" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontColor=#17324D;fontFamily=Google Sans;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DGoogle%2BSans;" value="&lt;b&gt;Status pesanan (rekomendasi):&lt;/b&gt; Menunggu bayar → Dibayar → Diproses → Siap → Selesai&amp;nbsp;&amp;nbsp;|&amp;nbsp;&amp;nbsp;Batal hanya lewat jalur pengecualian" vertex="1">
+                    <mxGeometry height="30" width="1760" x="36" y="1044" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
