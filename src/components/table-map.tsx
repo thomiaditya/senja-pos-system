@@ -363,9 +363,9 @@ export function TableMap({
         role="application"
         aria-label="Denah meja"
       />
-      <div className="table-map-legend">
-        <span><i className="legend-dot is-free" /> Kosong</span>
-        <span><i className="legend-dot is-occupied" /> Terisi</span>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+        <span className="inline-flex items-center gap-2"><i className="size-2.5 rounded-full bg-[#2f9e6a]" /> Kosong</span>
+        <span className="inline-flex items-center gap-2"><i className="size-2.5 rounded-full bg-[#d9822b]" /> Terisi</span>
         {mode === "admin" && <span>Geser meja untuk memindahkan posisinya</span>}
         {mode === "admin" && <span>Klik bentuk lalu tarik sudut untuk mengubah ukuran</span>}
       </div>

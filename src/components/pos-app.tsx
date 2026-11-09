@@ -7,7 +7,6 @@ import {
   AlertTriangle,
   ArrowDownRight,
   ArrowRight,
-  ArrowUpRight,
   Banknote,
   Bell,
   BellOff,
@@ -16,7 +15,6 @@ import {
   Boxes,
   ChartNoAxesCombined,
   Check,
-  ChevronDown,
   Circle,
   ClipboardList,
   Clock3,
@@ -59,9 +57,37 @@ import {
 } from "@/lib/browser-bluetooth-printer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "cn";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { TableMap, type MapSelection, type ShapeRect } from "@/components/table-map";
 import {
   enableQueueAlarmSound,
@@ -151,11 +177,11 @@ const navItems: { id: AppSection; label: string; icon: LucideIcon; roles: UserRo
 ];
 const stationLabels: Record<StationSlug, "Barista" | "Kitchen"> = { barista: "Barista", kitchen: "Kitchen" };
 const orderStatusStyles: Record<Order["status"], string> = {
-  Queued: "status-queued",
-  Preparing: "status-preparing",
-  "Ready for pickup": "status-ready",
-  Completed: "status-completed",
-  Cancelled: "status-cancelled",
+  Queued: "border-transparent bg-amber-100 text-amber-800",
+  Preparing: "border-transparent bg-blue-100 text-blue-800",
+  "Ready for pickup": "border-transparent bg-emerald-100 text-emerald-800",
+  Completed: "border-transparent bg-slate-100 text-slate-700",
+  Cancelled: "border-transparent bg-red-100 text-red-700",
 };
 const orderStatusLabels: Record<Order["status"], string> = {
   Queued: "Antrean",
@@ -165,11 +191,11 @@ const orderStatusLabels: Record<Order["status"], string> = {
   Cancelled: "Dibatalkan",
 };
 const columns: { status: Order["status"]; label: string; tone: string }[] = [
-  { status: "Queued", label: "Antrean", tone: "kanban-queued" },
-  { status: "Preparing", label: "Sedang diproses", tone: "kanban-preparing" },
-  { status: "Ready for pickup", label: "Siap diambil", tone: "kanban-ready" },
-  { status: "Completed", label: "Selesai", tone: "kanban-completed" },
-  { status: "Cancelled", label: "Dibatalkan", tone: "kanban-cancelled" },
+  { status: "Queued", label: "Antrean", tone: "bg-amber-50/70" },
+  { status: "Preparing", label: "Sedang diproses", tone: "bg-blue-50/70" },
+  { status: "Ready for pickup", label: "Siap diambil", tone: "bg-emerald-50/70" },
+  { status: "Completed", label: "Selesai", tone: "bg-slate-50" },
+  { status: "Cancelled", label: "Dibatalkan", tone: "bg-red-50/70" },
 ];
 
 function money(value: number) {
@@ -188,10 +214,10 @@ function fullDate(value: string) {
 
 function SectionTitle({ eyebrow, title, action }: { eyebrow?: string; title: string; action?: ReactNode }) {
   return (
-    <div className="section-title-row">
-      <div>
-        {eyebrow && <span className="eyebrow">{eyebrow}</span>}
-        <h1>{title}</h1>
+    <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="space-y-1">
+        {eyebrow && <p className="text-sm font-medium text-muted-foreground">{eyebrow}</p>}
+        <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
       </div>
       {action}
     </div>
@@ -212,17 +238,21 @@ function MetricCard({
   tone: string;
 }) {
   return (
-    <Card className="metric-card">
-      <div className={`metric-icon ${tone}`}><Icon size={19} /></div>
-      <span className="metric-label">{label}</span>
-      <strong className="metric-value">{value}</strong>
-      <span className="metric-note">{note}</span>
+    <Card>
+      <CardContent className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm text-muted-foreground">{label}</span>
+          <div className={cn("flex size-9 items-center justify-center rounded-md", tone)}><Icon className="size-4" /></div>
+        </div>
+        <p className="text-2xl font-semibold tabular-nums">{value}</p>
+        <p className="text-sm text-muted-foreground">{note}</p>
+      </CardContent>
     </Card>
   );
 }
 
 function StatusBadge({ status }: { status: Order["status"] }) {
-  return <Badge className={`order-status ${orderStatusStyles[status]}`}>{orderStatusLabels[status]}</Badge>;
+  return <Badge className={orderStatusStyles[status]}>{orderStatusLabels[status]}</Badge>;
 }
 
 async function requestJson<T>(
@@ -261,7 +291,6 @@ export function PosApp({
   const router = useRouter();
   const [data, setData] = useState(initialData);
   const user = data.user;
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [printOrder, setPrintOrder] = useState<Order | null>(null);
 
@@ -365,66 +394,101 @@ export function PosApp({
   }
 
   return (
-    <div className="pos-shell">
-      <aside className={`sidebar ${mobileNavOpen ? "sidebar-open" : ""}`}>
-        <div className="sidebar-brand">
-          <div className="brand-icon"><Coffee size={21} /></div>
-          <div><strong>Kopi Senja</strong><span>POINT OF SALE</span></div>
-          <button className="mobile-close" onClick={() => setMobileNavOpen(false)} aria-label="Tutup menu"><X size={18} /></button>
-        </div>
-        <div className="outlet-switcher">
-          <Avatar src={data.outletLogoUrl} name={data.outletName} className="outlet-avatar" />
-          <div><strong>{data.outletName}</strong><span>Outlet aktif</span></div>
-          <ChevronDown size={15} />
-        </div>
-        <div className="nav-caption">MENU UTAMA</div>
-        <nav className="main-nav" aria-label="Navigasi utama">
-          {sections.map(({ id, label, icon: Icon }) => {
-            const isStationRole = user.role === "barista" || user.role === "kitchen";
-            const href = id === "pesanan" && isStationRole ? defaultPathForRole(user.role) : appPath({ section: id });
-            return (
-              <Link
-                key={id}
-                href={href}
-                prefetch={false}
-                className={`nav-link ${section === id ? "nav-link-active" : ""}`}
-                onClick={() => setMobileNavOpen(false)}
-              >
-                <Icon size={18} strokeWidth={1.8} />
-                <span>{label}</span>
-                {id === "pesanan" && activeOrders > 0 && <span className="nav-counter">{activeOrders}</span>}
-              </Link>
-            );
-          })}
-        </nav>
-        {user.role === "admin" && data.summary.lowStockCount > 0 && (
-          <div className="sidebar-alert">
-            <AlertTriangle size={17} />
-            <div><strong>Stok perlu dicek</strong><span>{data.summary.lowStockCount} bahan di batas minimum</span></div>
+    <>
+    <TooltipProvider>
+    <SidebarProvider>
+      <Sidebar collapsible="icon">
+        <SidebarHeader>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton size="lg" className="pointer-events-none">
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                  <Coffee className="size-4" />
+                </div>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold">Kopi Senja</span>
+                  <span className="truncate text-xs text-muted-foreground">Point of Sale</span>
+                </div>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+          <div className="flex items-center gap-3 rounded-lg border bg-background p-2">
+            <Avatar src={data.outletLogoUrl} name={data.outletName} className="size-8 shrink-0 overflow-hidden rounded-md bg-primary/10 text-xs font-semibold text-primary [&_img]:size-full [&_img]:object-cover flex items-center justify-center" />
+            <div className="grid min-w-0 flex-1 text-sm leading-tight group-data-[collapsible=icon]:hidden">
+              <span className="truncate font-medium">{data.outletName}</span>
+              <span className="truncate text-xs text-muted-foreground">Outlet aktif</span>
+            </div>
           </div>
-        )}
-        <div className="sidebar-bottom">
-          <div className="sidebar-help"><Sparkles size={17} /><span>POS lokal siap melayani<br />operasional outlet.</span></div>
-          <div className="user-card">
-            <Avatar src={data.userAvatarUrl} name={user.name} className="user-avatar" />
-            <div className="user-info"><strong>{user.name}</strong><span>{roleLabels[user.role]}</span></div>
-            <button className="logout-button" onClick={logout} disabled={pending} title="Keluar"><LogOut size={17} /></button>
-          </div>
-        </div>
-      </aside>
+        </SidebarHeader>
 
-      <div className="main-area">
-        <header className="topbar">
-          <button className="mobile-menu" onClick={() => setMobileNavOpen(true)} aria-label="Buka menu"><span></span><span></span><span></span></button>
-          <div className="breadcrumb"><span>Operasional</span><span>/</span><strong>{activeLabel}</strong></div>
-          <div className="topbar-right">
-            <span className="topbar-date">{new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long" }).format(new Date())}</span>
-            <div className="online-indicator"><span className="live-dot" /> Lokal</div>
-            <Avatar src={data.userAvatarUrl} name={user.name} className="topbar-user" />
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel>Menu utama</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {sections.map(({ id, label, icon: Icon }) => {
+                  const isStationRole = user.role === "barista" || user.role === "kitchen";
+                  const href = id === "pesanan" && isStationRole ? defaultPathForRole(user.role) : appPath({ section: id });
+                  return (
+                    <SidebarMenuItem key={id}>
+                      <SidebarMenuButton
+                        tooltip={label}
+                        isActive={section === id}
+                        render={<Link href={href} prefetch={false} />}
+                      >
+                        <Icon />
+                        <span>{label}</span>
+                      </SidebarMenuButton>
+                      {id === "pesanan" && activeOrders > 0 && <SidebarMenuBadge>{activeOrders}</SidebarMenuBadge>}
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+          {user.role === "admin" && data.summary.lowStockCount > 0 && (
+            <Alert className="mx-2 w-auto group-data-[collapsible=icon]:hidden">
+              <AlertTriangle />
+              <AlertTitle>Stok perlu dicek</AlertTitle>
+              <AlertDescription>{data.summary.lowStockCount} bahan di batas minimum</AlertDescription>
+            </Alert>
+          )}
+        </SidebarContent>
+
+        <SidebarFooter>
+          <div className="flex items-center gap-3 rounded-lg p-2 group-data-[collapsible=icon]:justify-center">
+            <Avatar src={data.userAvatarUrl} name={user.name} className="size-8 shrink-0 overflow-hidden rounded-full bg-primary/10 text-xs font-semibold text-primary [&_img]:size-full [&_img]:object-cover flex items-center justify-center" />
+            <div className="grid min-w-0 flex-1 text-sm leading-tight group-data-[collapsible=icon]:hidden">
+              <span className="truncate font-medium">{user.name}</span>
+              <span className="truncate text-xs text-muted-foreground">{roleLabels[user.role]}</span>
+            </div>
+            <Button variant="ghost" size="icon" onClick={logout} disabled={pending} title="Keluar" aria-label="Keluar">
+              <LogOut />
+            </Button>
+          </div>
+        </SidebarFooter>
+        <SidebarRail />
+      </Sidebar>
+
+      <SidebarInset>
+        <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="h-4" />
+          <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground">Operasional</span>
+            <span className="text-muted-foreground">/</span>
+            <span className="font-medium">{activeLabel}</span>
+          </nav>
+          <div className="ml-auto flex items-center gap-3 text-sm text-muted-foreground">
+            <span className="hidden md:inline">{new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long" }).format(new Date())}</span>
+            <Badge variant="outline" className="gap-1.5">
+              <span className="size-1.5 rounded-full bg-emerald-500" />
+              Lokal
+            </Badge>
           </div>
         </header>
 
-        <main className="workspace">
+        <main className="flex flex-1 flex-col gap-6 p-4 md:p-6">
           {section === "dashboard" && <Dashboard data={data} onNavigate={(target) => router.push(appPath({ section: target }))} />}
           {section === "kasir" && (
             <Cashier
@@ -468,7 +532,9 @@ export function PosApp({
             <SettingsScreen data={data} pending={pending} runAction={perform} />
           )}
         </main>
-      </div>
+        </SidebarInset>
+      </SidebarProvider>
+      </TooltipProvider>
 
       <Toaster richColors position="top-right" />
       {printOrder && (
@@ -478,7 +544,7 @@ export function PosApp({
           onClose={() => setPrintOrder(null)}
         />
       )}
-    </div>
+    </>
   );
 }
 
@@ -491,85 +557,127 @@ function Dashboard({ data, onNavigate }: { data: PosBootstrap; onNavigate: (sect
     .slice(0, 4);
 
   return (
-    <div className="screen-stack">
+    <>
       <SectionTitle
-        eyebrow="RINGKASAN OUTLET"
+        eyebrow={`Ringkasan ${data.outletName}`}
         title="Dashboard"
-        action={<Button onClick={() => onNavigate("kasir")}><Plus size={16} /> Transaksi baru</Button>}
+        action={<Button onClick={() => onNavigate("kasir")}><Plus data-icon="inline-start" />Transaksi baru</Button>}
       />
-      <div className="welcome-strip">
-        <div>
-          <span className="welcome-kicker">HARI INI DI {data.outletName.toUpperCase()}</span>
-          <h2>Selamat bekerja, operasional berjalan lancar.</h2>
-          <p>Pesanan aktif dan ringkasan penjualan outlet Anda.</p>
+      <div className="flex items-center justify-between gap-4 rounded-xl bg-primary p-6 text-primary-foreground">
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-primary-foreground/80">Hari ini di {data.outletName}</p>
+          <h2 className="text-xl font-semibold">Selamat bekerja, operasional berjalan lancar.</h2>
+          <p className="text-base text-primary-foreground/80">Pesanan aktif dan ringkasan penjualan outlet Anda.</p>
         </div>
-        <div className="welcome-graphic"><Coffee size={75} strokeWidth={1.1} /><span>☀</span></div>
+        <Coffee className="hidden size-14 shrink-0 text-primary-foreground/90 sm:block" strokeWidth={1.25} />
       </div>
-      <div className="metric-grid">
-        <MetricCard icon={Wallet} label="Penjualan hari ini" value={money(summary.todaySales)} note={`${summary.todayOrders} transaksi terbayar`} tone="metric-green" />
-        <MetricCard icon={ClipboardList} label="Pesanan aktif" value={String(summary.activeOrders)} note="Menunggu atau sedang dibuat" tone="metric-blue" />
-        <MetricCard icon={PackageCheck} label="Bahan perlu dicek" value={String(summary.lowStockCount)} note={summary.lowStockCount ? "Di bawah batas minimum" : "Semua stok aman"} tone="metric-orange" />
+      <div className="grid gap-4 sm:grid-cols-3">
+        <MetricCard icon={Wallet} label="Penjualan hari ini" value={money(summary.todaySales)} note={`${summary.todayOrders} transaksi terbayar`} tone="bg-blue-100 text-blue-700" />
+        <MetricCard icon={ClipboardList} label="Pesanan aktif" value={String(summary.activeOrders)} note="Menunggu atau sedang dibuat" tone="bg-sky-100 text-sky-700" />
+        <MetricCard icon={PackageCheck} label="Bahan perlu dicek" value={String(summary.lowStockCount)} note={summary.lowStockCount ? "Di bawah batas minimum" : "Semua stok aman"} tone="bg-amber-100 text-amber-700" />
       </div>
-      <div className="dashboard-grid">
-        <Card className="panel sales-panel">
-          <div className="panel-heading">
-            <div><h2>Penjualan 7 hari</h2><p>Ringkasan pendapatan harian</p></div>
-            <Badge variant="secondary">Minggu ini</Badge>
-          </div>
-          <div className="sales-total">{money(summary.dailySales.reduce((sum, item) => sum + item.total, 0))}<span>Total 7 hari terakhir</span></div>
-          <div className="sales-chart" role="img" aria-label="Grafik penjualan tujuh hari terakhir">
-            {summary.dailySales.map((sale) => (
-              <div className="chart-column" key={sale.date}>
-                <span className="chart-tooltip">{sale.total ? money(sale.total) : "Belum ada transaksi"}</span>
-                <div className="chart-bar-track"><div className="chart-bar" style={{ height: `${Math.max(4, sale.total / maxDaily * 100)}%` }} /></div>
-                <span className="chart-label">{sale.label}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-        <Card className="panel best-sellers-panel">
-          <div className="panel-heading"><div><h2>Menu terlaris</h2><p>Paling banyak dipesan hari ini</p></div><Coffee size={18} className="muted-icon" /></div>
-          {summary.topProducts.length === 0 ? <EmptyState text="Belum ada penjualan hari ini." /> : (
-            <div className="best-seller-list">
-              {summary.topProducts.slice(0, 4).map((product, index) => (
-                <div className="best-seller" key={product.name}>
-                  <span className={`rank rank-${index + 1}`}>{String(index + 1).padStart(2, "0")}</span>
-                  <div className="best-seller-name"><strong>{product.name}</strong><span>{product.quantity} item terjual</span></div>
-                  <ArrowUpRight size={16} className="muted-icon" />
+      <div className="grid gap-6 xl:grid-cols-3">
+        <Card className="xl:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-lg">Penjualan 7 hari</CardTitle>
+            <CardDescription>Ringkasan pendapatan harian</CardDescription>
+            <CardAction><Badge variant="secondary">Minggu ini</Badge></CardAction>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div>
+              <p className="text-3xl font-semibold tabular-nums">{money(summary.dailySales.reduce((sum, item) => sum + item.total, 0))}</p>
+              <p className="text-sm text-muted-foreground">Total 7 hari terakhir</p>
+            </div>
+            <div className="grid h-56 grid-cols-7 gap-3" role="img" aria-label="Grafik penjualan tujuh hari terakhir">
+              {summary.dailySales.map((sale) => (
+                <div className="flex h-full flex-col items-center gap-2" key={sale.date}>
+                  <span className="text-xs tabular-nums text-muted-foreground">{sale.total ? money(sale.total) : "—"}</span>
+                  <div className="flex w-full flex-1 items-end rounded-md bg-muted p-1">
+                    <div className="w-full rounded-sm bg-primary transition-all" style={{ height: `${Math.max(4, sale.total / maxDaily * 100)}%` }} />
+                  </div>
+                  <span className="text-sm text-muted-foreground">{sale.label}</span>
                 </div>
               ))}
             </div>
-          )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Menu terlaris</CardTitle>
+            <CardDescription>Paling banyak dipesan hari ini</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {summary.topProducts.length === 0 ? <EmptyState text="Belum ada penjualan hari ini." /> : (
+              <ul className="divide-y">
+                {summary.topProducts.slice(0, 4).map((product, index) => (
+                  <li className="flex items-center gap-3 py-3 first:pt-0 last:pb-0" key={product.name}>
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-sm font-semibold tabular-nums">{index + 1}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{product.name}</p>
+                      <p className="text-sm text-muted-foreground">{product.quantity} item terjual</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
         </Card>
       </div>
-      <div className="dashboard-grid lower-grid">
-        <Card className="panel">
-          <div className="panel-heading"><div><h2>Pesanan terbaru</h2><p>Aktivitas transaksi outlet</p></div><button className="text-link" onClick={() => onNavigate("pesanan")}>Lihat semua <ArrowRight size={14} /></button></div>
-          <div className="recent-list">
-            {recentOrders.length === 0 ? <EmptyState text="Belum ada transaksi." /> : recentOrders.map((order) => (
-              <div className="recent-row" key={order.id}>
-                <div className="recent-order-mark"><ShoppingCart size={16} /></div>
-                <div className="recent-order-name"><strong>{order.orderNumber}</strong><span>{order.type}{order.table ? ` · ${order.table}` : ""} · {dateTime(order.createdAt)}</span></div>
-                <StatusBadge status={order.status} />
-                <strong className="recent-total">{money(order.total ?? 0)}</strong>
-              </div>
-            ))}
-          </div>
+      <div className="grid gap-6 xl:grid-cols-3">
+        <Card className="xl:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-lg">Pesanan terbaru</CardTitle>
+            <CardDescription>Aktivitas transaksi outlet</CardDescription>
+            <CardAction>
+              <Button variant="link" size="sm" onClick={() => onNavigate("pesanan")}>
+                Lihat semua<ArrowRight data-icon="inline-end" />
+              </Button>
+            </CardAction>
+          </CardHeader>
+          <CardContent>
+            {recentOrders.length === 0 ? <EmptyState text="Belum ada transaksi." /> : (
+              <ul className="divide-y">
+                {recentOrders.map((order) => (
+                  <li className="flex items-center gap-3 py-3 first:pt-0 last:pb-0" key={order.id}>
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted"><ShoppingCart className="size-4" /></span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium">{order.orderNumber}</p>
+                      <p className="truncate text-sm text-muted-foreground">{order.type}{order.table ? ` · ${order.table}` : ""} · {dateTime(order.createdAt)}</p>
+                    </div>
+                    <StatusBadge status={order.status} />
+                    <span className="w-28 text-right font-semibold tabular-nums">{money(order.total ?? 0)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
         </Card>
         {data.user.role === "admin" && (
-          <Card className="panel low-stock-panel">
-            <div className="panel-heading"><div><h2>Perhatian stok</h2><p>Stok tersedia dibanding batas minimum</p></div><AlertTriangle size={18} className="warning-icon" /></div>
-            {lowIngredients.length === 0 ? <EmptyState text="Semua bahan baku berada di batas aman." /> : lowIngredients.map((ingredient) => (
-              <div className="stock-alert-row" key={ingredient.id}>
-                <div className="stock-alert-dot"><AlertTriangle size={15} /></div>
-                <div><strong>{ingredient.name}</strong><span>{ingredient.onHand - ingredient.reserved} {ingredient.unit} tersedia · minimum {ingredient.minimum}</span></div>
-                <span className="stock-low-tag">Rendah</span>
-              </div>
-            ))}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Perhatian stok</CardTitle>
+              <CardDescription>Stok tersedia dibanding batas minimum</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {lowIngredients.length === 0 ? <EmptyState text="Semua bahan baku berada di batas aman." /> : (
+                <ul className="divide-y">
+                  {lowIngredients.map((ingredient) => (
+                    <li className="flex items-center gap-3 py-3 first:pt-0 last:pb-0" key={ingredient.id}>
+                      <AlertTriangle className="size-4 shrink-0 text-amber-600" />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium">{ingredient.name}</p>
+                        <p className="text-sm text-muted-foreground">{ingredient.onHand - ingredient.reserved} {ingredient.unit} tersedia · minimum {ingredient.minimum}</p>
+                      </div>
+                      <Badge variant="outline" className="text-amber-700">Rendah</Badge>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
           </Card>
         )}
       </div>
-    </div>
+    </>
   );
 }
 
@@ -694,73 +802,114 @@ function Cashier({
   }
 
   return (
-    <div className="screen-stack cashier-screen">
+    <div className="flex flex-col gap-6">
       <SectionTitle
         eyebrow="POINT OF SALE"
         title="Kasir"
-        action={<button className="ghost-action" onClick={() => setOrderHistoryOpen((open) => !open)}><Clock3 size={16} /> Riwayat hari ini</button>}
+        action={<Button variant="outline" onClick={() => setOrderHistoryOpen((open) => !open)}><Clock3 data-icon="inline-start" /> Riwayat hari ini</Button>}
       />
       {orderHistoryOpen && (
-        <Card className="panel history-panel">
-          <div className="panel-heading"><div><h2>Riwayat transaksi terbaru</h2><p>Pilih cetak untuk membuka kembali nota dan tiket</p></div><button className="close-plain" onClick={() => setOrderHistoryOpen(false)}><X size={18} /></button></div>
-          {data.orders.slice(0, 8).map((order) => (
-            <div className="history-row" key={order.id}>
-              <div><strong>{order.orderNumber}</strong><span>{dateTime(order.createdAt)} · {order.paymentMethod ?? "Pembayaran"}</span></div>
-              <StatusBadge status={order.status} />
-              <strong>{money(order.total ?? 0)}</strong>
-              <button className="icon-action" onClick={() => onPrint(order)} title="Cetak ulang"><Printer size={16} /></button>
-            </div>
-          ))}
+        <Card>
+          <CardHeader>
+            <CardTitle>Riwayat transaksi terbaru</CardTitle>
+            <CardDescription>Pilih cetak untuk membuka kembali nota dan tiket</CardDescription>
+            <CardAction>
+              <Button variant="ghost" size="icon" aria-label="Tutup riwayat" onClick={() => setOrderHistoryOpen(false)}><X /></Button>
+            </CardAction>
+          </CardHeader>
+          <CardContent className="flex flex-col divide-y">
+            {data.orders.slice(0, 8).map((order) => (
+              <div className="flex items-center gap-4 py-3" key={order.id}>
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <strong className="font-semibold">{order.orderNumber}</strong>
+                  <span className="text-sm text-muted-foreground">{dateTime(order.createdAt)} · {order.paymentMethod ?? "Pembayaran"}</span>
+                </div>
+                <StatusBadge status={order.status} />
+                <strong className="font-semibold tabular-nums">{money(order.total ?? 0)}</strong>
+                <Button variant="outline" size="icon" onClick={() => onPrint(order)} title="Cetak ulang" aria-label="Cetak ulang"><Printer /></Button>
+              </div>
+            ))}
+          </CardContent>
         </Card>
       )}
-      <div className="cashier-layout">
-        <section className="menu-catalog">
-          <div className="catalog-toolbar">
-            <div className="search-field"><Search size={17} /><Input placeholder="Cari menu..." value={search} onChange={(event) => setSearch(event.target.value)} /></div>
-            <div className="category-pills">
-              {categories.map((item) => <button key={item} className={category === item ? "category-pill category-pill-active" : "category-pill"} onClick={() => setCategory(item)}>{item}</button>)}
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <section className="flex min-w-0 flex-col gap-4">
+          <div className="flex flex-col gap-3">
+            <div className="relative">
+              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input className="pl-9" placeholder="Cari menu..." value={search} onChange={(event) => setSearch(event.target.value)} />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {categories.map((item) => (
+                <Button key={item} size="sm" variant={category === item ? "default" : "outline"} className="rounded-full" onClick={() => setCategory(item)}>{item}</Button>
+              ))}
             </div>
           </div>
-          <div className="product-grid">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-4">
             {products.map((product) => (
-              <button className="product-card" key={product.id} onClick={() => addProduct(product)}>
-                <span className={`product-art product-art-${product.category === "Makanan" ? "food" : "drink"}`}>{product.icon || "☕"}</span>
-                {product.note && <span className="product-note">{product.note}</span>}
-                <strong>{product.name}</strong>
-                <span className="product-category">{product.category}</span>
-                <span className="product-price">{money(product.price)} <span className="product-add"><Plus size={15} /></span></span>
+              <button
+                className="group flex flex-col gap-2 rounded-xl border bg-card p-4 text-left shadow-xs transition-colors hover:border-primary hover:bg-primary/5 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                key={product.id}
+                onClick={() => addProduct(product)}
+              >
+                <span className="flex size-12 items-center justify-center rounded-lg bg-primary/10 text-2xl">{product.icon || "☕"}</span>
+                {product.note && <span className="text-xs text-muted-foreground">{product.note}</span>}
+                <strong className="font-semibold">{product.name}</strong>
+                <span className="text-sm text-muted-foreground">{product.category}</span>
+                <span className="mt-auto flex items-center justify-between gap-2 pt-2 font-semibold text-primary tabular-nums">
+                  {money(product.price)}
+                  <span className="flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform group-hover:scale-105"><Plus className="size-4" /></span>
+                </span>
               </button>
             ))}
-            {products.length === 0 && <div className="empty-products"><Coffee size={28} /><strong>Menu tidak ditemukan</strong><span>Coba kata kunci atau kategori lain.</span></div>}
+            {products.length === 0 && (
+              <div className="col-span-full flex flex-col items-center gap-2 rounded-xl border border-dashed p-10 text-center text-muted-foreground">
+                <Coffee className="size-7" />
+                <strong className="font-semibold text-foreground">Menu tidak ditemukan</strong>
+                <span>Coba kata kunci atau kategori lain.</span>
+              </div>
+            )}
           </div>
         </section>
 
-        <Card className="cart-panel">
-          <div className="cart-heading">
-            <div><div className="cart-title"><ShoppingCart size={18} /><h2>Pesanan baru</h2></div><p>{cart.reduce((sum, item) => sum + item.quantity, 0)} item dalam keranjang</p></div>
-            {cart.length > 0 && <button className="clear-cart" onClick={() => setCart([])} title="Kosongkan pesanan"><Trash2 size={16} /></button>}
-          </div>
-          <div className="order-type-switch">
-            {(["Dine-in", "Takeaway"] as const).map((type) => <button key={type} className={orderType === type ? "type-option type-option-active" : "type-option"} onClick={() => setOrderType(type)}>{type === "Dine-in" ? "Makan di tempat" : "Bungkus"}</button>)}
+        <Card className="sticky top-20 self-start">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><ShoppingCart className="size-5 text-primary" /> Pesanan baru</CardTitle>
+            <CardDescription>{cart.reduce((sum, item) => sum + item.quantity, 0)} item dalam keranjang</CardDescription>
+            {cart.length > 0 && (
+              <CardAction>
+                <Button variant="ghost" size="icon" onClick={() => setCart([])} title="Kosongkan pesanan" aria-label="Kosongkan pesanan"><Trash2 /></Button>
+              </CardAction>
+            )}
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+          <div className="grid grid-cols-2 gap-2 rounded-lg bg-muted p-1">
+            {(["Dine-in", "Takeaway"] as const).map((type) => (
+              <Button key={type} variant={orderType === type ? "default" : "ghost"} size="sm" onClick={() => setOrderType(type)}>
+                {type === "Dine-in" ? "Makan di tempat" : "Bungkus"}
+              </Button>
+            ))}
           </div>
           {orderType === "Dine-in" && (
-            <div className="cashier-table-picker">
-              <div className="table-picker-heading">
-                <span>Pilih meja</span>
-                {selectedTable && <strong>{selectedTable.name}</strong>}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium">Pilih meja</span>
+                {selectedTable && <Badge>{selectedTable.name}</Badge>}
               </div>
               {data.tables.length === 0 ? (
-                <div className="table-empty-state">
-                  <strong>Belum ada meja</strong>
-                  <span>
-                    {data.user.role === "admin"
-                      ? "Tambahkan denah meja di Pengaturan terlebih dahulu."
-                      : "Minta admin menambahkan denah meja di Pengaturan."}
-                  </span>
-                  {data.user.role === "admin" && (
-                    <Link className="table-empty-link" href={appPath({ section: "pengaturan" })}>Buka Pengaturan</Link>
-                  )}
-                </div>
+                <Alert>
+                  <AlertTitle>Belum ada meja</AlertTitle>
+                  <AlertDescription className="flex flex-col gap-2">
+                    <span>
+                      {data.user.role === "admin"
+                        ? "Tambahkan denah meja di Pengaturan terlebih dahulu."
+                        : "Minta admin menambahkan denah meja di Pengaturan."}
+                    </span>
+                    {data.user.role === "admin" && (
+                      <Link className="font-medium text-primary underline-offset-4 hover:underline" href={appPath({ section: "pengaturan" })}>Buka Pengaturan</Link>
+                    )}
+                  </AlertDescription>
+                </Alert>
               ) : (
                 <>
                   <TableMap
@@ -771,28 +920,30 @@ function Cashier({
                     onSelectTable={(picked) => setTableId(picked.id)}
                     className="table-map-cashier"
                   />
-                  {!selectedTable && <p className="table-picker-hint">Klik meja di denah untuk memilihnya.</p>}
+                  {!selectedTable && <p className="text-sm text-muted-foreground">Klik meja di denah untuk memilihnya.</p>}
                   {selectedTable?.occupied && (
-                    <p className="table-picker-hint">Meja ini sedang terisi. Pesanan tambahan tetap bisa dibuat.</p>
+                    <p className="text-sm text-muted-foreground">Meja ini sedang terisi. Pesanan tambahan tetap bisa dibuat.</p>
                   )}
                 </>
               )}
             </div>
           )}
-          <div className="cart-items">
+          <div className="flex max-h-[360px] flex-col gap-2 overflow-y-auto">
             {cart.length === 0 ? (
-              <div className="cart-empty"><div><ShoppingCart size={23} /></div><strong>Belum ada pesanan</strong><span>Pilih menu untuk mulai transaksi.</span></div>
+              <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed p-6 text-center text-muted-foreground">
+                <ShoppingCart className="size-6" /><strong className="font-semibold text-foreground">Belum ada pesanan</strong><span>Pilih menu untuk mulai transaksi.</span>
+              </div>
             ) : cart.map((item) => {
               const product = data.products.find((candidate) => candidate.id === item.productId);
               return (
-                <div className="cart-line" key={item.key}>
-                  <div className="cart-line-icon">{item.icon || "☕"}</div>
-                  <div className="cart-line-main">
-                    <strong>{item.name}</strong>
+                <div className="flex items-center gap-3 rounded-lg border p-3" key={item.key}>
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-xl">{item.icon || "☕"}</div>
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <strong className="truncate font-semibold">{item.name}</strong>
                     <select
                       aria-label={`Pilihan ${item.name}`}
                       value={item.modifier}
-                      className="modifier-select"
+                      className="h-8 rounded-md border bg-background px-2 text-sm"
                       onChange={(event) => {
                         const newModifier = event.target.value;
                         const nextKey = `${item.productId}:${newModifier}`;
@@ -818,33 +969,38 @@ function Cashier({
                     >
                       {(product?.modifiers ?? []).map((modifier) => <option key={modifier}>{modifier}</option>)}
                     </select>
-                    <span className="cart-unit-price">{money(item.price)}</span>
+                    <span className="text-sm text-muted-foreground tabular-nums">{money(item.price)}</span>
                   </div>
-                  <div className="quantity-control">
-                    <button onClick={() => changeQuantity(item.key, -1)} aria-label={`Kurangi ${item.name}`}><Minus size={13} /></button>
-                    <span>{item.quantity}</span>
-                    <button onClick={() => changeQuantity(item.key, 1)} aria-label={`Tambah ${item.name}`}><Plus size={13} /></button>
+                  <div className="flex items-center gap-1">
+                    <Button variant="outline" size="icon-sm" onClick={() => changeQuantity(item.key, -1)} aria-label={`Kurangi ${item.name}`}><Minus /></Button>
+                    <span className="w-6 text-center font-semibold tabular-nums">{item.quantity}</span>
+                    <Button variant="outline" size="icon-sm" onClick={() => changeQuantity(item.key, 1)} aria-label={`Tambah ${item.name}`}><Plus /></Button>
                   </div>
                 </div>
               );
             })}
           </div>
-          <div className="cart-checkout">
-            <label className="field-label">Catatan pesanan <Input placeholder="Contoh: saus dipisah" value={note} onChange={(event) => setNote(event.target.value)} /></label>
-            <div className="checkout-totals">
-              <div><span>Subtotal</span><span>{money(subtotal)}</span></div>
-              {discountAmount > 0 && <div><span>Diskon ({appliedDiscount?.name})</span><span>-{money(discountAmount)}</span></div>}
-              <div><span>Pajak ({(data.taxRateBasisPoints / 100).toLocaleString("id-ID")}%)</span><span>{money(tax)}</span></div>
-              <div className="checkout-grand-total"><strong>Total</strong><strong>{money(total)}</strong></div>
+          <div className="flex flex-col gap-3 border-t pt-4">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="cashier-note">Catatan pesanan</Label>
+              <Input id="cashier-note" placeholder="Contoh: saus dipisah" value={note} onChange={(event) => setNote(event.target.value)} />
+            </div>
+            <div className="flex flex-col gap-2 text-sm">
+              <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span className="tabular-nums">{money(subtotal)}</span></div>
+              {discountAmount > 0 && <div className="flex justify-between text-primary"><span>Diskon ({appliedDiscount?.name})</span><span className="tabular-nums">-{money(discountAmount)}</span></div>}
+              <div className="flex justify-between"><span className="text-muted-foreground">Pajak ({(data.taxRateBasisPoints / 100).toLocaleString("id-ID")}%)</span><span className="tabular-nums">{money(tax)}</span></div>
+              <Separator className="my-1" />
+              <div className="flex justify-between text-base font-semibold"><span>Total</span><span className="tabular-nums">{money(total)}</span></div>
             </div>
             <Button
-              className="checkout-button"
+              size="lg"
               disabled={saving || pending || cart.length === 0 || (orderType === "Dine-in" && !selectedTable)}
               onClick={() => setCheckoutOpen(true)}
             >
-              Lanjut ke pembayaran <ArrowRight size={17} />
+              Lanjut ke pembayaran <ArrowRight data-icon="inline-end" />
             </Button>
           </div>
+          </CardContent>
         </Card>
       </div>
       {checkoutOpen && (
@@ -935,14 +1091,6 @@ function CheckoutDialog({
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
   const isLastStep = step === CHECKOUT_STEP_LABELS.length - 1;
 
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape" && !saving) onClose();
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose, saving]);
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (saving || (isLastStep && cashBlocked)) return;
@@ -954,39 +1102,51 @@ function CheckoutDialog({
   }
 
   return (
-    <div className="checkout-backdrop" role="presentation" onMouseDown={(event) => {
-      if (event.target === event.currentTarget && !saving) onClose();
+    <Dialog open onOpenChange={(open) => {
+      if (!open && !saving) onClose();
     }}>
-      <form className="checkout-modal" role="dialog" aria-modal="true" aria-labelledby="checkout-title" onSubmit={handleSubmit}>
-        <div className="checkout-header">
-          <div>
-            <div className="checkout-icon"><Wallet size={20} /></div>
-            <div>
-              <h2 id="checkout-title">Pembayaran</h2>
-              <p>{itemCount} item · {orderType === "Dine-in" ? table : "Bungkus"}</p>
+      <DialogContent className="flex flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl" showCloseButton={false}>
+        <form className="flex max-h-[90vh] flex-col" onSubmit={handleSubmit}>
+          <DialogHeader className="flex-row items-center justify-between gap-4 border-b p-5">
+            <div className="flex items-center gap-3">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><Wallet className="size-5" /></div>
+              <div className="flex flex-col gap-0.5">
+                <DialogTitle className="text-lg">Pembayaran</DialogTitle>
+                <DialogDescription>{itemCount} item · {orderType === "Dine-in" ? table : "Bungkus"}</DialogDescription>
+              </div>
             </div>
-          </div>
-          <button type="button" className="close-plain" onClick={onClose} disabled={saving} aria-label="Tutup"><X size={20} /></button>
-        </div>
-        <ol className="checkout-steps" aria-label="Langkah pembayaran">
-          {CHECKOUT_STEP_LABELS.map((label, index) => (
-            <li
-              key={label}
-              className={index === step ? "checkout-step checkout-step-active" : index < step ? "checkout-step checkout-step-done" : "checkout-step"}
-              aria-current={index === step ? "step" : undefined}
-            >
-              <span className="checkout-step-number">{index < step ? <Check size={14} /> : index + 1}</span>
-              <span>{label}</span>
-            </li>
-          ))}
-        </ol>
-        <div className="checkout-body">
+            <Button type="button" variant="ghost" size="icon" onClick={onClose} disabled={saving} aria-label="Tutup"><X /></Button>
+          </DialogHeader>
+          <ol className="flex flex-wrap gap-2 border-b bg-muted/40 px-5 py-3 text-sm" aria-label="Langkah pembayaran">
+            {CHECKOUT_STEP_LABELS.map((label, index) => (
+              <li
+                key={label}
+                className={cn(
+                  "flex items-center gap-2 rounded-full px-3 py-1 text-muted-foreground",
+                  index === step && "bg-primary text-primary-foreground",
+                  index < step && "text-primary",
+                )}
+                aria-current={index === step ? "step" : undefined}
+              >
+                <span className={cn(
+                  "flex size-5 items-center justify-center rounded-full border text-xs font-semibold",
+                  index === step && "border-transparent bg-primary-foreground text-primary",
+                  index < step && "border-primary bg-primary text-primary-foreground",
+                )}>
+                  {index < step ? <Check className="size-3" /> : index + 1}
+                </span>
+                <span>{label}</span>
+              </li>
+            ))}
+          </ol>
+          <div className="flex min-h-64 flex-col gap-4 overflow-y-auto p-5">
           {step === 0 && (
             <>
-              <h3>Nama pelanggan</h3>
-              <label className="field-label">Nama pelanggan
+              <h3 className="text-lg font-semibold">Nama pelanggan</h3>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="checkout-customer">Nama pelanggan</Label>
                 <Input
-                  className="checkout-cash-input"
+                  id="checkout-customer"
                   list={customerListId}
                   placeholder="Ketik atau pilih nama pelanggan"
                   maxLength={60}
@@ -995,7 +1155,7 @@ function CheckoutDialog({
                   value={customerName}
                   onChange={(event) => setCustomerName(event.target.value)}
                 />
-              </label>
+              </div>
               <datalist id={customerListId}>
                 {customers.map((customer) => (
                   <option key={customer.name} value={customer.name} label={`${customer.orderCount}× pesan`} />
@@ -1003,77 +1163,86 @@ function CheckoutDialog({
               </datalist>
               {frequentCustomers.length > 0 && (
                 <>
-                  <p className="checkout-instruction">Pelanggan yang sering memesan</p>
-                  <div className="checkout-chips">
+                  <p className="text-sm text-muted-foreground">Pelanggan yang sering memesan</p>
+                  <div className="flex flex-wrap gap-2">
                     {frequentCustomers.map((customer) => (
-                      <button
+                      <Button
                         type="button"
                         key={customer.name}
-                        className={trimmedCustomerName === customer.name ? "checkout-chip checkout-chip-active" : "checkout-chip"}
+                        size="sm"
+                        variant={trimmedCustomerName === customer.name ? "default" : "outline"}
+                        className="rounded-full"
                         aria-pressed={trimmedCustomerName === customer.name}
                         onClick={() => setCustomerName(customer.name)}
                       >
                         {customer.name} · {customer.orderCount}×
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </>
               )}
-              {trimmedCustomerName === "" && <p className="checkout-instruction">Nama pelanggan wajib diisi sebelum lanjut.</p>}
+              {trimmedCustomerName === "" && <p className="text-sm text-muted-foreground">Nama pelanggan wajib diisi sebelum lanjut.</p>}
             </>
           )}
           {step === 1 && (
             <>
-              <h3>Pilih diskon</h3>
-              <p className="checkout-instruction">Diskon diterapkan sebelum pajak. Kosongkan jika tidak ada diskon.</p>
-              <div className="checkout-chips">
-                <button
+              <h3 className="text-lg font-semibold">Pilih diskon</h3>
+              <p className="text-sm text-muted-foreground">Diskon diterapkan sebelum pajak. Kosongkan jika tidak ada diskon.</p>
+              <div className="flex flex-wrap gap-2">
+                <Button
                   type="button"
-                  className={appliedDiscount === null ? "checkout-chip checkout-chip-active" : "checkout-chip"}
+                  size="sm"
+                  variant={appliedDiscount === null ? "default" : "outline"}
+                  className="rounded-full"
                   aria-pressed={appliedDiscount === null}
                   onClick={() => onSelectDiscount(null)}
                 >
                   Tanpa diskon
-                </button>
+                </Button>
                 {discounts.map((discount) => {
                   const eligible = subtotal >= discount.minSubtotal;
                   const isActive = appliedDiscount?.id === discount.id;
                   return (
-                    <button
+                    <Button
                       type="button"
                       key={discount.id}
-                      className={isActive ? "checkout-chip checkout-chip-active" : "checkout-chip"}
+                      size="sm"
+                      variant={isActive ? "default" : "outline"}
+                      className="rounded-full"
                       aria-pressed={isActive}
                       disabled={!eligible}
                       onClick={() => onSelectDiscount(discount.id)}
                     >
                       {discount.name} · {discount.kind === "Percent" ? `${discount.value}%` : money(discount.value)}
-                      {!eligible && <span> (min. {money(discount.minSubtotal)})</span>}
-                    </button>
+                      {!eligible && <span>(min. {money(discount.minSubtotal)})</span>}
+                    </Button>
                   );
                 })}
               </div>
-              {discounts.length === 0 && <p className="checkout-instruction">Belum ada diskon aktif. Admin dapat menambahkannya di menu Menu.</p>}
+              {discounts.length === 0 && <p className="text-sm text-muted-foreground">Belum ada diskon aktif. Admin dapat menambahkannya di menu Menu.</p>}
               {appliedDiscount && (
-                <div className="checkout-change"><span>Potongan {appliedDiscount.name}</span><strong>-{money(discountAmount)}</strong></div>
+                <div className="flex items-center justify-between rounded-lg bg-primary/10 p-3 text-primary"><span>Potongan {appliedDiscount.name}</span><strong className="tabular-nums">-{money(discountAmount)}</strong></div>
               )}
             </>
           )}
           {step === 2 && (
             <>
-              <h3>Pilih metode pembayaran</h3>
-              <div className="checkout-method-grid">
+              <h3 className="text-lg font-semibold">Pilih metode pembayaran</h3>
+              <div className="grid gap-3 sm:grid-cols-3">
                 {PAYMENT_OPTIONS.map(({ method: option, icon: Icon, hint }) => (
                   <button
                     type="button"
                     key={option}
-                    className={method === option ? "checkout-method checkout-method-active" : "checkout-method"}
+                    className={cn(
+                      "flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-colors hover:border-primary",
+                      method === option && "border-primary bg-primary/5 ring-3 ring-primary/20",
+                    )}
                     aria-pressed={method === option}
                     onClick={() => setMethod(option)}
                   >
-                    <Icon size={22} />
-                    <strong>{option}</strong>
-                    <span>{hint}</span>
+                    <Icon className="size-6 text-primary" />
+                    <strong className="font-semibold">{option}</strong>
+                    <span className="text-sm text-muted-foreground">{hint}</span>
                   </button>
                 ))}
               </div>
@@ -1081,14 +1250,16 @@ function CheckoutDialog({
           )}
           {step === 3 && (
             <>
-              <h3>{isCash ? "Uang diterima" : `Pembayaran ${method}`}</h3>
-              <div className="checkout-amount-due"><span>Total tagihan</span><strong>{money(total)}</strong></div>
-              {cashBlocked && <p className="checkout-warning">Shift kas belum dibuka. Buka shift di menu Kas, atau pilih metode non-tunai.</p>}
+              <h3 className="text-lg font-semibold">{isCash ? "Uang diterima" : `Pembayaran ${method}`}</h3>
+              <div className="flex items-center justify-between rounded-lg bg-muted p-4"><span className="text-muted-foreground">Total tagihan</span><strong className="text-2xl tabular-nums">{money(total)}</strong></div>
+              {cashBlocked && <Alert variant="destructive"><AlertDescription>Shift kas belum dibuka. Buka shift di menu Kas, atau pilih metode non-tunai.</AlertDescription></Alert>}
               {isCash ? (
                 <>
-                  <label className="field-label">Nominal uang tunai
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="checkout-cash">Nominal uang tunai</Label>
                     <Input
-                      className="checkout-cash-input"
+                      id="checkout-cash"
+                      className="h-12 text-lg tabular-nums"
                       type="number"
                       inputMode="numeric"
                       min={0}
@@ -1098,18 +1269,18 @@ function CheckoutDialog({
                       value={cashInput}
                       onChange={(event) => setCashInput(event.target.value)}
                     />
-                  </label>
-                  <div className="checkout-chips">
-                    <button type="button" className="checkout-chip" onClick={() => setCashInput(String(total))}>Uang pas</button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" size="sm" variant="outline" className="rounded-full" onClick={() => setCashInput(String(total))}>Uang pas</Button>
                     {CASH_QUICK_AMOUNTS.map((amount) => (
-                      <button type="button" key={amount} className="checkout-chip" onClick={() => setCashInput(String(amount))}>{money(amount)}</button>
+                      <Button type="button" key={amount} size="sm" variant="outline" className="rounded-full" onClick={() => setCashInput(String(amount))}>{money(amount)}</Button>
                     ))}
                   </div>
-                  {cashShort && cashInput !== "" && <p className="checkout-warning">Uang kurang {money(total - cashReceived)}</p>}
-                  {!cashShort && <div className="checkout-change"><span>Kembalian</span><strong>{money(cashReceived - total)}</strong></div>}
+                  {cashShort && cashInput !== "" && <p className="text-sm font-medium text-destructive">Uang kurang {money(total - cashReceived)}</p>}
+                  {!cashShort && <div className="flex items-center justify-between rounded-lg bg-primary/10 p-3 text-primary"><span>Kembalian</span><strong className="tabular-nums">{money(cashReceived - total)}</strong></div>}
                 </>
               ) : (
-                <p className="checkout-instruction">
+                <p className="text-sm text-muted-foreground">
                   {method === "QRIS"
                     ? "Minta pelanggan memindai QRIS di layar terminal, lalu pastikan pembayaran berhasil sebelum lanjut."
                     : "Minta pelanggan menyelesaikan pembayaran di mesin EDC, lalu pastikan transaksi berhasil sebelum lanjut."}
@@ -1119,49 +1290,51 @@ function CheckoutDialog({
           )}
           {step === 4 && (
             <>
-              <h3>Konfirmasi pesanan</h3>
-              <div className="checkout-summary">
-                <div><span>Pelanggan</span><strong>{trimmedCustomerName}</strong></div>
-                <div><span>Tipe</span><strong>{orderType === "Dine-in" ? "Makan di tempat" : "Bungkus"}</strong></div>
-                {orderType === "Dine-in" && <div><span>Meja</span><strong>{table}</strong></div>}
-                <div><span>Metode</span><strong>{method}</strong></div>
-                {isCash && <div><span>Uang diterima</span><strong>{money(cashReceived)}</strong></div>}
-                {isCash && <div><span>Kembalian</span><strong>{money(cashReceived - total)}</strong></div>}
+              <h3 className="text-lg font-semibold">Konfirmasi pesanan</h3>
+              <div className="grid gap-2 rounded-lg border p-4 text-sm sm:grid-cols-2">
+                <div className="flex justify-between gap-2"><span className="text-muted-foreground">Pelanggan</span><strong className="font-semibold">{trimmedCustomerName}</strong></div>
+                <div className="flex justify-between gap-2"><span className="text-muted-foreground">Tipe</span><strong className="font-semibold">{orderType === "Dine-in" ? "Makan di tempat" : "Bungkus"}</strong></div>
+                {orderType === "Dine-in" && <div className="flex justify-between gap-2"><span className="text-muted-foreground">Meja</span><strong className="font-semibold">{table}</strong></div>}
+                <div className="flex justify-between gap-2"><span className="text-muted-foreground">Metode</span><strong className="font-semibold">{method}</strong></div>
+                {isCash && <div className="flex justify-between gap-2"><span className="text-muted-foreground">Uang diterima</span><strong className="font-semibold tabular-nums">{money(cashReceived)}</strong></div>}
+                {isCash && <div className="flex justify-between gap-2"><span className="text-muted-foreground">Kembalian</span><strong className="font-semibold tabular-nums">{money(cashReceived - total)}</strong></div>}
               </div>
-              <div className="checkout-items">
+              <div className="flex flex-col gap-2 text-sm">
                 {items.map((item) => (
-                  <div key={item.key}>
+                  <div className="flex justify-between gap-2" key={item.key}>
                     <span>{item.quantity}× {item.name}{item.modifier ? ` (${item.modifier})` : ""}</span>
-                    <strong>{money(item.price * item.quantity)}</strong>
+                    <strong className="font-semibold tabular-nums">{money(item.price * item.quantity)}</strong>
                   </div>
                 ))}
               </div>
-              <div className="checkout-totals">
-                <div><span>Subtotal</span><span>{money(subtotal)}</span></div>
-                {appliedDiscount && <div><span>Diskon ({appliedDiscount.name})</span><span>-{money(discountAmount)}</span></div>}
-                <div><span>Pajak ({taxRateLabel}%)</span><span>{money(tax)}</span></div>
-                <div className="checkout-grand-total"><strong>Total</strong><strong>{money(total)}</strong></div>
+              <Separator />
+              <div className="flex flex-col gap-2 text-sm">
+                <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span className="tabular-nums">{money(subtotal)}</span></div>
+                {appliedDiscount && <div className="flex justify-between text-primary"><span>Diskon ({appliedDiscount.name})</span><span className="tabular-nums">-{money(discountAmount)}</span></div>}
+                <div className="flex justify-between"><span className="text-muted-foreground">Pajak ({taxRateLabel}%)</span><span className="tabular-nums">{money(tax)}</span></div>
+                <div className="flex justify-between text-base font-semibold"><span>Total</span><span className="tabular-nums">{money(total)}</span></div>
               </div>
-              <p className="payment-note"><Check size={13} /> Pembayaran simulasi · reservasi stok otomatis</p>
+              <p className="flex items-center gap-1.5 text-sm text-muted-foreground"><Check className="size-4" /> Pembayaran simulasi · reservasi stok otomatis</p>
             </>
           )}
-        </div>
-        <div className="checkout-footer">
-          {step === 0 ? (
-            <Button type="button" variant="outline" onClick={onClose} disabled={saving}>Batal</Button>
-          ) : (
-            <Button type="button" variant="outline" onClick={() => setStep(step - 1)} disabled={saving}>Kembali</Button>
-          )}
-          {isLastStep ? (
-            <Button type="submit" disabled={saving || cashBlocked}>
-              {saving ? "Memproses pembayaran..." : "Bayar & buat pesanan"} <Check size={16} />
-            </Button>
-          ) : (
-            <Button type="submit" disabled={!canContinue}>Lanjut <ArrowRight size={16} /></Button>
-          )}
-        </div>
-      </form>
-    </div>
+          </div>
+          <DialogFooter className="m-0 border-t p-4">
+            {step === 0 ? (
+              <Button type="button" variant="outline" onClick={onClose} disabled={saving}>Batal</Button>
+            ) : (
+              <Button type="button" variant="outline" onClick={() => setStep(step - 1)} disabled={saving}>Kembali</Button>
+            )}
+            {isLastStep ? (
+              <Button type="submit" disabled={saving || cashBlocked}>
+                {saving ? "Memproses pembayaran..." : "Bayar & buat pesanan"} <Check data-icon="inline-end" />
+              </Button>
+            ) : (
+              <Button type="submit" disabled={!canContinue}>Lanjut <ArrowRight data-icon="inline-end" /></Button>
+            )}
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -1218,45 +1391,56 @@ function OrdersBoard({
   ];
 
   return (
-    <div className={`screen-stack kanban-screen ${boardTone}`}>
+    <div className={`flex flex-col gap-6 ${boardTone}`}>
       <SectionTitle
         eyebrow="PRODUKSI & PICKUP"
         title={filter === "Semua" ? "Pesanan" : `Pesanan ${filter}`}
-        action={!stationRole && <div className="station-filters">
+        action={!stationRole && <div className="flex gap-1 rounded-lg bg-muted p-1">
           {stationTabs.map((tab) => (
-            <Link key={tab.value} href={tab.href} prefetch={false} className={filter === tab.value ? "station-filter station-filter-active" : "station-filter"}>{tab.label}</Link>
+            <Link
+              key={tab.value}
+              href={tab.href}
+              prefetch={false}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground",
+                filter === tab.value && "bg-background text-foreground shadow-xs",
+              )}
+            >
+              {tab.label}
+            </Link>
           ))}
         </div>}
       />
-      <div className="kanban-summary">
-        <div><span className="live-dot" /><strong>{data.summary.activeOrders}</strong> pesanan aktif di outlet</div>
-        <span>Link ini khusus untuk {filter === "Semua" ? "semua stasiun" : `stasiun ${filter}`} · perubahan status tersimpan otomatis</span>
-        <button
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4 text-sm">
+        <div className="flex items-center gap-2"><span className="size-2 animate-pulse rounded-full bg-emerald-500" /><strong className="font-semibold">{data.summary.activeOrders}</strong> pesanan aktif di outlet</div>
+        <span className="text-muted-foreground">Link ini khusus untuk {filter === "Semua" ? "semua stasiun" : `stasiun ${filter}`} · perubahan status tersimpan otomatis</span>
+        <Button
           type="button"
-          className={soundEnabled ? "alarm-sound-toggle alarm-sound-on" : "alarm-sound-toggle"}
+          variant={soundEnabled ? "default" : "outline"}
+          size="sm"
           aria-pressed={soundEnabled}
           onClick={toggleAlarmSound}
         >
-          {soundEnabled ? <Bell size={14} /> : <BellOff size={14} />}
+          {soundEnabled ? <Bell /> : <BellOff />}
           {soundEnabled ? "Suara alarm aktif" : "Aktifkan suara alarm"}
-        </button>
+        </Button>
       </div>
       {hasAlarm && !soundEnabled && (
-        <div className="queue-alarm-banner" role="alert">
-          <AlertTriangle size={16} />
-          <span>Ada pesanan yang menunggu lebih dari 10 menit. Aktifkan suara alarm agar peringatan berbunyi.</span>
-        </div>
+        <Alert variant="destructive" role="alert">
+          <AlertTriangle />
+          <AlertDescription>Ada pesanan yang menunggu lebih dari 10 menit. Aktifkan suara alarm agar peringatan berbunyi.</AlertDescription>
+        </Alert>
       )}
-      <div className="kanban-board">
+      <div className="grid gap-4 xl:grid-cols-5">
         {columns.map((column) => {
           const columnOrders = visibleOrders.filter((order) => order.status === column.status);
           return (
-            <section className={`kanban-column ${column.tone}`} key={column.status}>
-              <div className="kanban-column-heading">
-                <div><span className="column-dot" /><h2>{column.label}</h2></div>
-                <span className="column-count">{columnOrders.length}</span>
+            <section className={cn("flex min-h-72 flex-col gap-3 rounded-xl border p-3", column.tone)} key={column.status}>
+              <div className="flex items-center justify-between gap-2 px-1">
+                <h2 className="flex items-center gap-2 text-base font-semibold"><span className="size-2 rounded-full bg-primary" />{column.label}</h2>
+                <Badge variant="secondary" className="tabular-nums">{columnOrders.length}</Badge>
               </div>
-              <div className="kanban-column-body">
+              <div className="flex flex-col gap-3">
                 {columnOrders.map((order) => (
                   <OrderCard
                     key={order.id}
@@ -1272,7 +1456,7 @@ function OrdersBoard({
                     onPrint={onPrint}
                   />
                 ))}
-                {columnOrders.length === 0 && <div className="kanban-empty">Belum ada pesanan</div>}
+                {columnOrders.length === 0 && <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">Belum ada pesanan</div>}
               </div>
             </section>
           );
@@ -1320,42 +1504,44 @@ function OrderCard({
   const level: QueueLevel = timed && now !== null ? getQueueLevel(order.createdAt, now) : "normal";
   const levelClass = level === "alarm" ? " order-card-alarm" : level === "warning" ? " order-card-warning" : "";
   return (
-    <article className={`order-card${levelClass}`}>
-      <div className="order-card-top">
-        <div>
-          <strong>{order.orderNumber}</strong>
-          {order.customerName && <b className="order-customer">{order.customerName}</b>}
-          <span>{dateTime(order.createdAt)}</span>
+    <article className={cn("order-card flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-xs", levelClass)}>
+      <div className="order-card-top flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <strong className="font-semibold">{order.orderNumber}</strong>
+          {order.customerName && <b className="order-customer font-semibold">{order.customerName}</b>}
+          <span className="text-sm text-muted-foreground">{dateTime(order.createdAt)}</span>
         </div>
-        <div className="order-card-badges">
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
           <StatusBadge status={order.status} />
           {timed && (
-            <span className="queue-timer" aria-label="Lama menunggu">
-              <Clock3 size={12} /> {now === null ? "--:--" : formatQueueElapsed(order.createdAt, now)}
+            <span className="queue-timer inline-flex items-center gap-1 rounded-full bg-white/85 px-2 py-0.5 text-sm font-semibold tabular-nums text-foreground" aria-label="Lama menunggu">
+              <Clock3 className="size-3.5" /> {now === null ? "--:--" : formatQueueElapsed(order.createdAt, now)}
             </span>
           )}
         </div>
       </div>
-      <div className="order-card-meta">
+      <div className="order-card-meta flex items-center justify-between gap-2 text-sm text-muted-foreground">
         <span>{order.type === "Dine-in" ? "Dine-in" : "Takeaway"}{order.table ? ` · ${order.table}` : ""}</span>
-        {canPrint && <button className="order-print-button" title="Cetak nota dan tiket" onClick={() => onPrint(order)}><Printer size={14} /></button>}
+        {canPrint && (
+          <Button variant="outline" size="icon-sm" className="text-foreground" title="Cetak nota dan tiket" aria-label="Cetak nota dan tiket" onClick={() => onPrint(order)}><Printer /></Button>
+        )}
       </div>
-      {order.note && <div className="order-note"><FileText size={13} /> {order.note}</div>}
-      <div className="ticket-list">
+      {order.note && <div className="flex items-start gap-1.5 rounded-md bg-muted p-2 text-sm text-foreground"><FileText className="mt-0.5 size-3.5 shrink-0" /> {order.note}</div>}
+      <div className="flex flex-col gap-2">
         {tickets.map((ticket) => (
           <TicketCard key={ticket.id} order={order} ticket={ticket} pending={pending} onAction={onAction} />
         ))}
       </div>
       {order.status === "Ready for pickup" && canPickup && (
-        <Button className="pickup-button" disabled={pending} onClick={() => onAction(order.id, { action: "pickup" })}>
-          <Check size={15} /> Selesaikan pickup
+        <Button disabled={pending} onClick={() => onAction(order.id, { action: "pickup" })}>
+          <Check data-icon="inline-start" /> Selesaikan pickup
         </Button>
       )}
       {canCancel && !["Completed", "Cancelled"].includes(order.status) && (
-        <button className="cancel-order-button" onClick={() => onCancel(order)}>Batalkan pesanan</button>
+        <Button variant="destructive" size="sm" onClick={() => onCancel(order)}>Batalkan pesanan</Button>
       )}
-      {order.status === "Cancelled" && order.cancelReason && <div className="cancel-reason">Alasan: {order.cancelReason}</div>}
-      {order.status === "Completed" && <div className="completed-note"><Check size={14} /> Diambil pelanggan {order.collectedAt && dateTime(order.collectedAt)}</div>}
+      {order.status === "Cancelled" && order.cancelReason && <div className="cancel-reason text-sm text-destructive">Alasan: {order.cancelReason}</div>}
+      {order.status === "Completed" && <div className="flex items-center gap-1.5 text-sm text-muted-foreground"><Check className="size-3.5" /> Diambil pelanggan {order.collectedAt && dateTime(order.collectedAt)}</div>}
     </article>
   );
 }
@@ -1372,39 +1558,39 @@ function TicketCard({
   onAction: (id: string, action: OrderAction) => Promise<Order | null>;
 }) {
   return (
-    <div className={`ticket-card ticket-${ticket.station.toLowerCase()}`}>
-      <div className="ticket-heading">
-        <span className="ticket-station-icon">{ticket.station === "Kitchen" ? "🍳" : "☕"}</span>
-        <strong>{ticket.station}</strong>
-        <Badge className={`ticket-status ticket-status-${ticket.status.toLowerCase()}`}>
+    <div className="flex flex-col gap-2 rounded-lg border bg-background p-3 text-foreground">
+      <div className="flex items-center gap-2">
+        <span className="text-base">{ticket.station === "Kitchen" ? "🍳" : "☕"}</span>
+        <strong className="font-semibold">{ticket.station}</strong>
+        <Badge variant="outline" className="ml-auto">
           {ticket.status === "Queued" ? "Antrean" : ticket.status === "Preparing" ? "Diproses" : ticket.status === "Ready" ? "Siap" : "Batal"}
         </Badge>
       </div>
-      <div className="ticket-items">
+      <div className="flex flex-col gap-1 text-sm">
         {ticket.items.map((item) => (
-          <div className="ticket-item" key={item.id}>
-            <span><b>{item.quantity}×</b> {item.name}</span>
-            {item.modifier && <small>{item.modifier}</small>}
+          <div className="flex flex-col" key={item.id}>
+            <span><b className="font-semibold">{item.quantity}×</b> {item.name}</span>
+            {item.modifier && <small className="text-muted-foreground">{item.modifier}</small>}
           </div>
         ))}
       </div>
       {ticket.status === "Queued" && (
         <Button
-          className="ticket-action"
           variant="outline"
+          size="sm"
           disabled={pending}
           onClick={() => onAction(order.id, { action: "start", station: ticket.station })}
         >
-          Mulai produksi <ArrowRight size={14} />
+          Mulai produksi <ArrowRight data-icon="inline-end" />
         </Button>
       )}
       {ticket.status === "Preparing" && (
         <Button
-          className="ticket-action ticket-ready-action"
+          size="sm"
           disabled={pending}
           onClick={() => onAction(order.id, { action: "ready", station: ticket.station })}
         >
-          <Check size={14} /> Tandai siap
+          <Check data-icon="inline-start" /> Tandai siap
         </Button>
       )}
     </div>
@@ -1434,11 +1620,16 @@ function MenuScreen({
     || product.category.toLowerCase().includes(query.toLowerCase()),
   );
   return (
-    <div className="screen-stack">
-      <SectionTitle eyebrow="KATALOG & HARGA" title="Menu" action={<div className="menu-count">{data.products.length} menu terdaftar</div>} />
-      <Card className="panel adjustment-panel">
-        <div className="panel-heading"><div><h2>Tambah menu baru</h2><p>Menu langsung tersedia di kasir. Setiap menu wajib punya resep bahan.</p></div><Plus size={18} className="muted-icon" /></div>
-        <ProductForm data={data} pending={pending} onCreate={onCreate} />
+    <div className="flex flex-col gap-6">
+      <SectionTitle eyebrow="Katalog & harga" title="Menu" action={<Badge variant="secondary">{data.products.length} menu terdaftar</Badge>} />
+      <Card>
+        <CardHeader>
+          <CardTitle>Tambah menu baru</CardTitle>
+          <CardDescription>Menu langsung tersedia di kasir. Setiap menu wajib punya resep bahan.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ProductForm data={data} pending={pending} onCreate={onCreate} />
+        </CardContent>
       </Card>
       <DiscountManager
         discounts={data.discounts}
@@ -1447,23 +1638,41 @@ function MenuScreen({
         onSetActive={onSetDiscountActive}
         onRemove={onRemoveDiscount}
       />
-      <Card className="panel table-panel">
-        <div className="table-toolbar">
-          <div><h2>Katalog menu</h2><p>Perubahan harga dan status langsung diterapkan pada kasir.</p></div>
-          <div className="search-field table-search"><Search size={16} /><Input placeholder="Cari menu..." value={query} onChange={(event) => setQuery(event.target.value)} /></div>
-        </div>
-        <div className="responsive-table">
-          <table>
-            <thead><tr><th>MENU</th><th>KATEGORI</th><th>STASIUN</th><th>HARGA JUAL</th><th>KETERSEDIAAN</th><th>AKSI</th></tr></thead>
-            <tbody>
+      <Card>
+        <CardHeader>
+          <CardTitle>Katalog menu</CardTitle>
+          <CardDescription>Perubahan harga dan status langsung diterapkan pada kasir.</CardDescription>
+          <CardAction>
+            <div className="relative w-64">
+              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input className="pl-8" placeholder="Cari menu..." value={query} onChange={(event) => setQuery(event.target.value)} />
+            </div>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Menu</TableHead>
+                <TableHead>Kategori</TableHead>
+                <TableHead>Stasiun</TableHead>
+                <TableHead>Harga jual</TableHead>
+                <TableHead>Ketersediaan</TableHead>
+                <TableHead className="text-right">Aksi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {filtered.map((product) => (
                 <MenuRow key={product.id} product={product} pending={pending} onSave={onSave} />
               ))}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </CardContent>
       </Card>
-      <div className="menu-hint"><Sparkles size={16} /><span>Harga di sini menjadi sumber utama transaksi. Setiap pesanan menyimpan snapshot harga pada saat dibayar.</span></div>
+      <Alert>
+        <Sparkles />
+        <AlertDescription>Harga di sini menjadi sumber utama transaksi. Setiap pesanan menyimpan snapshot harga pada saat dibayar.</AlertDescription>
+      </Alert>
     </div>
   );
 }
@@ -1525,61 +1734,78 @@ function DiscountManager({
   }
 
   return (
-    <Card className="panel adjustment-panel">
-      <div className="panel-heading">
-        <div><h2>Master diskon</h2><p>Diskon dipilih kasir saat pembayaran. Potongan dihitung sebelum pajak.</p></div>
-        <Tag size={18} className="muted-icon" />
-      </div>
-      <form className="adjustment-form product-form" onSubmit={submit}>
-        <div className="form-grid">
-          <label className="field-label">Nama diskon
+    <Card>
+      <CardHeader>
+        <CardTitle>Master diskon</CardTitle>
+        <CardDescription>Diskon dipilih kasir saat pembayaran. Potongan dihitung sebelum pajak.</CardDescription>
+        <CardAction><Tag className="size-5 text-muted-foreground" /></CardAction>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" onSubmit={submit}>
+          <div className="flex flex-col gap-2">
+            <Label>Nama diskon</Label>
             <Input value={name} maxLength={60} onChange={(event) => setName(event.target.value)} placeholder="Contoh: Member 10%" />
-          </label>
-          <label className="field-label">Jenis
-            <select className="field-select" value={kind} onChange={(event) => setKind(event.target.value as "Percent" | "Fixed")}>
-              <option value="Percent">Persentase (%)</option>
-              <option value="Fixed">Nominal (Rp)</option>
-            </select>
-          </label>
-          <label className="field-label">{kind === "Percent" ? "Persentase (1–100)" : "Nominal potongan (Rp)"}
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label>Jenis</Label>
+            <Select value={kind} onValueChange={(next) => setKind(next as "Percent" | "Fixed")}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Percent">Persentase (%)</SelectItem>
+                <SelectItem value="Fixed">Nominal (Rp)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label>{kind === "Percent" ? "Persentase (1–100)" : "Nominal potongan (Rp)"}</Label>
             <Input type="number" inputMode="numeric" min={1} step={1} value={value} onChange={(event) => setValue(event.target.value)} placeholder={kind === "Percent" ? "Contoh: 10" : "Contoh: 5000"} />
-          </label>
-          <label className="field-label">Minimal belanja (Rp)
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label>Minimal belanja (Rp)</Label>
             <Input type="number" inputMode="numeric" min={0} step={1} value={minSubtotal} onChange={(event) => setMinSubtotal(event.target.value)} placeholder="Kosongkan jika tidak ada" />
-          </label>
+          </div>
           {kind === "Percent" && (
-            <label className="field-label">Batas potongan maksimal (Rp)
+            <div className="flex flex-col gap-2">
+              <Label>Batas potongan maksimal (Rp)</Label>
               <Input type="number" inputMode="numeric" min={1} step={1} value={maxAmount} onChange={(event) => setMaxAmount(event.target.value)} placeholder="Kosongkan jika tanpa batas" />
-            </label>
+            </div>
           )}
-        </div>
-        <Button type="submit" disabled={pending}>Tambah diskon <Plus size={16} /></Button>
-      </form>
-      {discounts.length === 0 ? (
-        <EmptyState text="Belum ada master diskon. Tambahkan diskon pertama di atas." />
-      ) : (
-        <div className="responsive-table">
-          <table>
-            <thead><tr><th>NAMA</th><th>POTONGAN</th><th>MIN. BELANJA</th><th>BATAS MAKS.</th><th>STATUS</th><th>AKSI</th></tr></thead>
-            <tbody>
+          <div className="flex items-end md:col-span-2 xl:col-span-3">
+            <Button type="submit" disabled={pending}>Tambah diskon <Plus data-icon="inline-end" /></Button>
+          </div>
+        </form>
+        {discounts.length === 0 ? (
+          <EmptyState text="Belum ada master diskon. Tambahkan diskon pertama di atas." />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nama</TableHead>
+                <TableHead>Potongan</TableHead>
+                <TableHead>Min. belanja</TableHead>
+                <TableHead>Batas maks.</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Aksi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {discounts.map((discount) => (
-                <tr key={discount.id}>
-                  <td><strong>{discount.name}</strong></td>
-                  <td>{discount.kind === "Percent" ? `${discount.value}%` : money(discount.value)}</td>
-                  <td>{discount.minSubtotal > 0 ? money(discount.minSubtotal) : "—"}</td>
-                  <td>{discount.maxAmount !== null ? money(discount.maxAmount) : "—"}</td>
-                  <td>
-                    <span className={`availability ${discount.active ? "availability-on" : "availability-off"}`}>
-                      <span />{discount.active ? "Aktif" : "Nonaktif"}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="table-actions">
+                <TableRow key={discount.id}>
+                  <TableCell className="font-semibold">{discount.name}</TableCell>
+                  <TableCell>{discount.kind === "Percent" ? `${discount.value}%` : money(discount.value)}</TableCell>
+                  <TableCell>{discount.minSubtotal > 0 ? money(discount.minSubtotal) : "—"}</TableCell>
+                  <TableCell>{discount.maxAmount !== null ? money(discount.maxAmount) : "—"}</TableCell>
+                  <TableCell>
+                    <Badge variant={discount.active ? "default" : "secondary"}>{discount.active ? "Aktif" : "Nonaktif"}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-2">
                       <Button variant="outline" size="sm" disabled={pending} onClick={() => onSetActive(discount.id, !discount.active)}>
                         {discount.active ? "Nonaktifkan" : "Aktifkan"}
                       </Button>
-                      <button
-                        className="icon-action"
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
                         disabled={pending}
                         title="Hapus diskon"
                         aria-label={`Hapus diskon ${discount.name}`}
@@ -1589,16 +1815,16 @@ function DiscountManager({
                           }
                         }}
                       >
-                        <Trash2 size={16} />
-                      </button>
+                        <Trash2 />
+                      </Button>
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
     </Card>
   );
 }
@@ -1615,57 +1841,63 @@ function MenuRow({
   const [price, setPrice] = useState(String(product.price));
   const [editing, setEditing] = useState(false);
   return (
-    <tr>
-      <td><div className="table-product"><span className="table-product-icon">{product.icon || "☕"}</span><div><strong>{product.name}</strong><span>{product.note || "Menu reguler"}</span></div></div></td>
-      <td><Badge variant="secondary" className="category-badge">{product.category}</Badge></td>
-      <td>
-        <select
-          className="field-select station-select"
-          aria-label={`Stasiun ${product.name}`}
-          value={product.station}
-          disabled={pending}
-          onChange={(event) => onSave(product.id, { station: event.target.value as "Kitchen" | "Barista" })}
-        >
-          <option value="Barista">Barista</option>
-          <option value="Kitchen">Kitchen</option>
-        </select>
-      </td>
-      <td>
+    <TableRow>
+      <TableCell>
+        <div className="flex items-center gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-xl">{product.icon || "☕"}</span>
+          <div className="flex flex-col">
+            <span className="font-semibold">{product.name}</span>
+            <span className="text-sm text-muted-foreground">{product.note || "Menu reguler"}</span>
+          </div>
+        </div>
+      </TableCell>
+      <TableCell><Badge variant="secondary">{product.category}</Badge></TableCell>
+      <TableCell>
+        <Select value={product.station} disabled={pending} onValueChange={(next) => onSave(product.id, { station: next as "Kitchen" | "Barista" })}>
+          <SelectTrigger size="sm" className="w-32" aria-label={`Stasiun ${product.name}`}><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Barista">Barista</SelectItem>
+            <SelectItem value="Kitchen">Kitchen</SelectItem>
+          </SelectContent>
+        </Select>
+      </TableCell>
+      <TableCell>
         {editing
-          ? <Input aria-label={`Harga ${product.name}`} type="number" min={1000} value={price} onChange={(event) => setPrice(event.target.value)} className="price-input" />
-          : <strong>{money(product.price)}</strong>}
-      </td>
-      <td>
-        <span className={`availability ${product.active && product.available ? "availability-on" : "availability-off"}`}>
-          <span />{!product.active ? "Nonaktif" : product.available ? "Tersedia" : "Stok habis"}
-        </span>
-      </td>
-      <td>
-        <div className="table-actions">
+          ? <Input aria-label={`Harga ${product.name}`} type="number" min={1000} value={price} onChange={(event) => setPrice(event.target.value)} className="w-32" />
+          : <span className="font-semibold">{money(product.price)}</span>}
+      </TableCell>
+      <TableCell>
+        <Badge variant={product.active && product.available ? "default" : "secondary"}>
+          {!product.active ? "Nonaktif" : product.available ? "Tersedia" : "Stok habis"}
+        </Badge>
+      </TableCell>
+      <TableCell>
+        <div className="flex justify-end gap-2">
           {editing ? (
             <>
-              <button className="small-action small-action-save" disabled={pending} onClick={async () => {
+              <Button size="sm" disabled={pending} onClick={async () => {
                 const value = Number(price);
                 if (!Number.isInteger(value) || value < 1000) { toast.error("Harga minimal Rp1.000."); return; }
                 const saved = await onSave(product.id, { price: value });
                 if (saved !== null) setEditing(false);
-              }}>Simpan</button>
-              <button className="small-action" onClick={() => { setPrice(String(product.price)); setEditing(false); }}>Batal</button>
+              }}>Simpan</Button>
+              <Button variant="outline" size="sm" onClick={() => { setPrice(String(product.price)); setEditing(false); }}>Batal</Button>
             </>
           ) : (
             <>
-              <button className="small-action" onClick={() => setEditing(true)}>Ubah harga</button>
-              <button
-                className={`toggle-switch ${product.active ? "toggle-on" : ""}`}
-                title={product.active ? "Nonaktifkan menu" : "Aktifkan menu"}
+              <Button variant="outline" size="sm" onClick={() => setEditing(true)}>Ubah harga</Button>
+              <Switch
+                checked={product.active}
                 disabled={pending}
-                onClick={() => onSave(product.id, { active: !product.active })}
-              ><span /></button>
+                aria-label={product.active ? "Nonaktifkan menu" : "Aktifkan menu"}
+                title={product.active ? "Nonaktifkan menu" : "Aktifkan menu"}
+                onCheckedChange={() => onSave(product.id, { active: !product.active })}
+              />
             </>
           )}
         </div>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }
 
@@ -1704,88 +1936,138 @@ function InventoryScreen({
   }
 
   return (
-    <div className="screen-stack">
-      <SectionTitle eyebrow="BAHAN BAKU & MUTASI" title="Inventory" action={<Badge className={lowStock ? "inventory-warning" : "inventory-safe"}>{lowStock ? `${lowStock} stok perlu dicek` : "Semua stok aman"}</Badge>} />
-      <div className="inventory-metrics">
-        <MetricCard icon={Boxes} label="Jenis bahan" value={String(data.ingredients.length)} note="Bahan baku aktif" tone="metric-blue" />
-        <MetricCard icon={AlertTriangle} label="Perlu restock" value={String(lowStock)} note="Menyentuh batas minimum" tone="metric-orange" />
-        <MetricCard icon={ArrowDownRight} label="Mutasi tercatat" value={String(data.movements.length)} note="Riwayat terbaru" tone="metric-green" />
+    <div className="flex flex-col gap-6">
+      <SectionTitle eyebrow="Bahan baku & mutasi" title="Inventory" action={<Badge variant={lowStock ? "destructive" : "secondary"}>{lowStock ? `${lowStock} stok perlu dicek` : "Semua stok aman"}</Badge>} />
+      <div className="grid gap-4 md:grid-cols-3">
+        <MetricCard icon={Boxes} label="Jenis bahan" value={String(data.ingredients.length)} note="Bahan baku aktif" tone="bg-primary/10 text-primary" />
+        <MetricCard icon={AlertTriangle} label="Perlu restock" value={String(lowStock)} note="Menyentuh batas minimum" tone="bg-amber-500/10 text-amber-600" />
+        <MetricCard icon={ArrowDownRight} label="Mutasi tercatat" value={String(data.movements.length)} note="Riwayat terbaru" tone="bg-emerald-500/10 text-emerald-600" />
       </div>
-      <div className="inventory-grid">
-        <Card className="panel table-panel">
-          <div className="panel-heading"><div><h2>Stok bahan baku</h2><p>Stok tersedia dihitung setelah reservasi tiket.</p></div><Boxes size={18} className="muted-icon" /></div>
-          <div className="responsive-table">
-            <table className="inventory-table">
-              <thead><tr><th>BAHAN</th><th>ON HAND</th><th>RESERVED</th><th>TERSEDIA</th><th>MINIMUM</th></tr></thead>
-              <tbody>
+      <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Stok bahan baku</CardTitle>
+            <CardDescription>Stok tersedia dihitung setelah reservasi tiket.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Bahan</TableHead>
+                  <TableHead>On hand</TableHead>
+                  <TableHead>Reserved</TableHead>
+                  <TableHead>Tersedia</TableHead>
+                  <TableHead>Minimum</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {data.ingredients.map((ingredient) => {
                   const available = ingredient.onHand - ingredient.reserved;
                   const low = available <= ingredient.minimum;
                   return (
-                    <tr key={ingredient.id}>
-                      <td><strong>{ingredient.name}</strong></td>
-                      <td>{ingredient.onHand} {ingredient.unit}</td>
-                      <td>{ingredient.reserved} {ingredient.unit}</td>
-                      <td><strong className={low ? "text-warning" : "text-good"}>{available} {ingredient.unit}</strong></td>
-                      <td>{ingredient.minimum} {ingredient.unit}</td>
-                    </tr>
+                    <TableRow key={ingredient.id}>
+                      <TableCell className="font-semibold">{ingredient.name}</TableCell>
+                      <TableCell>{ingredient.onHand} {ingredient.unit}</TableCell>
+                      <TableCell>{ingredient.reserved} {ingredient.unit}</TableCell>
+                      <TableCell className={low ? "font-semibold text-amber-600" : "font-semibold text-emerald-600"}>{available} {ingredient.unit}</TableCell>
+                      <TableCell>{ingredient.minimum} {ingredient.unit}</TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
+          </CardContent>
         </Card>
-        <Card className="panel adjustment-panel">
-          <div className="panel-heading"><div><h2>Catat perubahan stok</h2><p>Barang masuk atau koreksi stok opname.</p></div><Plus size={18} className="muted-icon" /></div>
-          <form onSubmit={submit} className="adjustment-form">
-            <label className="field-label">Bahan baku
-              <select value={ingredientId} onChange={(event) => setIngredientId(event.target.value)} className="field-select">
-                {data.ingredients.map((ingredient) => <option value={ingredient.id} key={ingredient.id}>{ingredient.name} ({ingredient.unit})</option>)}
-              </select>
-            </label>
-            <label className="field-label">Perubahan jumlah
-              <Input type="number" step="any" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="Positif untuk masuk, negatif untuk koreksi" />
-            </label>
-            {selectedIngredient && <div className="adjustment-preview">Stok tersedia saat ini <strong>{selectedIngredient.onHand - selectedIngredient.reserved} {selectedIngredient.unit}</strong></div>}
-            <label className="field-label">Alasan mutasi
-              <Input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Contoh: penerimaan stok pemasok" maxLength={160} />
-            </label>
-            <Button type="submit" className="full-button" disabled={pending}><Check size={16} /> Simpan mutasi</Button>
-            <p className="form-caption">Stok tidak dapat dikurangi di bawah jumlah yang sudah direservasi untuk tiket.</p>
-          </form>
+        <Card>
+          <CardHeader>
+            <CardTitle>Catat perubahan stok</CardTitle>
+            <CardDescription>Barang masuk atau koreksi stok opname.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={submit} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <Label>Bahan baku</Label>
+                <Select value={ingredientId} onValueChange={(next) => setIngredientId(next ?? "")}>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {data.ingredients.map((ingredient) => <SelectItem value={ingredient.id} key={ingredient.id}>{ingredient.name} ({ingredient.unit})</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label>Perubahan jumlah</Label>
+                <Input type="number" step="any" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="Positif untuk masuk, negatif untuk koreksi" />
+              </div>
+              {selectedIngredient && (
+                <Alert>
+                  <AlertDescription>Stok tersedia saat ini <strong>{selectedIngredient.onHand - selectedIngredient.reserved} {selectedIngredient.unit}</strong></AlertDescription>
+                </Alert>
+              )}
+              <div className="flex flex-col gap-2">
+                <Label>Alasan mutasi</Label>
+                <Input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Contoh: penerimaan stok pemasok" maxLength={160} />
+              </div>
+              <Button type="submit" disabled={pending}><Check data-icon="inline-start" /> Simpan mutasi</Button>
+              <p className="text-sm text-muted-foreground">Stok tidak dapat dikurangi di bawah jumlah yang sudah direservasi untuk tiket.</p>
+            </form>
+          </CardContent>
         </Card>
       </div>
-      <Card className="panel adjustment-panel">
-        <div className="panel-heading"><div><h2>Tambah bahan baku</h2><p>Bahan baru bisa langsung dipakai sebagai resep menu.</p></div><Boxes size={18} className="muted-icon" /></div>
-        <IngredientForm pending={pending} onCreate={onCreate} />
+      <Card>
+        <CardHeader>
+          <CardTitle>Tambah bahan baku</CardTitle>
+          <CardDescription>Bahan baru bisa langsung dipakai sebagai resep menu.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <IngredientForm pending={pending} onCreate={onCreate} />
+        </CardContent>
       </Card>
-      <Card className="panel table-panel movement-panel">
-        <div className="table-toolbar">
-          <div><h2>Riwayat mutasi</h2><p>Reservasi saat pembayaran; Stock Out saat produksi. Audit/Waste hanya klasifikasi, bukan stok masuk.</p></div>
-          <select className="field-select movement-filter" value={movementFilter} onChange={(event) => setMovementFilter(event.target.value)}>{movementTypes.map((type) => <option key={type}>{type}</option>)}</select>
-        </div>
-        <div className="responsive-table">
-          <table>
-            <thead><tr><th>WAKTU</th><th>BAHAN</th><th>JENIS</th><th>PERUBAHAN</th><th>ALASAN / PESANAN</th><th>OLEH</th></tr></thead>
-            <tbody>
+      <Card>
+        <CardHeader>
+          <CardTitle>Riwayat mutasi</CardTitle>
+          <CardDescription>Reservasi saat pembayaran; Stock Out saat produksi. Audit/Waste hanya klasifikasi, bukan stok masuk.</CardDescription>
+          <CardAction>
+            <Select value={movementFilter} onValueChange={(next) => setMovementFilter(next ?? "Semua")}>
+              <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {movementTypes.map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Waktu</TableHead>
+                <TableHead>Bahan</TableHead>
+                <TableHead>Jenis</TableHead>
+                <TableHead>Perubahan</TableHead>
+                <TableHead>Alasan / pesanan</TableHead>
+                <TableHead>Oleh</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {filteredMovements.map((movement) => (
-                <tr key={movement.id}>
-                  <td>{fullDate(movement.createdAt)} · {dateTime(movement.createdAt)}</td>
-                  <td><strong>{movement.ingredientName}</strong></td>
-                  <td><Badge variant="secondary" className="movement-type">{movement.type}</Badge></td>
-                  <td className={movement.type === "Audit / Waste" || movement.amount < 0 ? "text-warning" : "text-good"}>
+                <TableRow key={movement.id}>
+                  <TableCell>{fullDate(movement.createdAt)} · {dateTime(movement.createdAt)}</TableCell>
+                  <TableCell className="font-semibold">{movement.ingredientName}</TableCell>
+                  <TableCell><Badge variant="secondary">{movement.type}</Badge></TableCell>
+                  <TableCell className={movement.type === "Audit / Waste" || movement.amount < 0 ? "text-amber-600" : "text-emerald-600"}>
                     {movement.type === "Audit / Waste"
                       ? `${movement.amount} ${movement.unit ?? ""} · waste`
                       : `${movement.amount > 0 ? "+" : ""}${movement.amount} ${movement.unit ?? ""}`}
-                  </td>
-                  <td>{movement.reason}{movement.orderNumber && <span className="sub-cell"> · {movement.orderNumber}</span>}</td>
-                  <td>{movement.actor}</td>
-                </tr>
+                  </TableCell>
+                  <TableCell>{movement.reason}{movement.orderNumber && <span className="text-muted-foreground"> · {movement.orderNumber}</span>}</TableCell>
+                  <TableCell>{movement.actor}</TableCell>
+                </TableRow>
               ))}
-              {filteredMovements.length === 0 && <tr><td colSpan={6}><EmptyState text="Belum ada mutasi untuk filter ini." /></td></tr>}
-            </tbody>
-          </table>
-        </div>
+              {filteredMovements.length === 0 && (
+                <TableRow><TableCell colSpan={6}><EmptyState text="Belum ada mutasi untuk filter ini." /></TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
       </Card>
     </div>
   );
@@ -1801,20 +2083,20 @@ const expenseStatusLabels: Record<ExpenseStatus, string> = {
 function CashScreen({ data, pending, runAction }: { data: PosBootstrap; pending: boolean; runAction: RunAction }) {
   const threshold = data.expenseApprovalThreshold;
   return (
-    <div className="screen-stack">
+    <div className="flex flex-col gap-6">
       <SectionTitle
-        eyebrow="KAS & PENGELUARAN"
+        eyebrow="Kas & pengeluaran"
         title="Kas"
         action={(
-          <div className="cash-title-actions">
-            <Badge className={data.cashShift ? "inventory-safe" : "inventory-warning"}>{data.cashShift ? "Shift dibuka" : "Shift belum dibuka"}</Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant={data.cashShift ? "default" : "secondary"}>{data.cashShift ? "Shift dibuka" : "Shift belum dibuka"}</Badge>
             <Button type="button" variant="outline" size="sm" disabled={pending || data.printer.mode === "off"} onClick={() => openCashDrawer(runAction)}>
               Buka laci
             </Button>
           </div>
         )}
       />
-      <div className="cash-grid">
+      <div className="grid gap-6 xl:grid-cols-2">
         <ShiftCard shift={data.cashShift} pending={pending} runAction={runAction} />
         <ExpenseForm
           shift={data.cashShift}
@@ -1826,13 +2108,25 @@ function CashScreen({ data, pending, runAction }: { data: PosBootstrap; pending:
           runAction={runAction}
         />
       </div>
-      <Card className="panel table-panel">
-        <div className="table-toolbar"><div><h2>Pengeluaran</h2><p>Belanja yang tercatat, lengkap dengan foto nota</p></div><Receipt size={18} className="muted-icon" /></div>
-        <ExpenseTable expenses={data.expenses} isAdmin={data.user.role === "admin"} pending={pending} runAction={runAction} />
+      <Card>
+        <CardHeader>
+          <CardTitle>Pengeluaran</CardTitle>
+          <CardDescription>Belanja yang tercatat, lengkap dengan foto nota</CardDescription>
+          <CardAction><Receipt className="size-5 text-muted-foreground" /></CardAction>
+        </CardHeader>
+        <CardContent>
+          <ExpenseTable expenses={data.expenses} isAdmin={data.user.role === "admin"} pending={pending} runAction={runAction} />
+        </CardContent>
       </Card>
-      <Card className="panel table-panel">
-        <div className="table-toolbar"><div><h2>Riwayat shift</h2><p>Hasil penutupan kas dan selisih</p></div><Banknote size={18} className="muted-icon" /></div>
-        <ShiftHistoryTable shifts={data.recentShifts} />
+      <Card>
+        <CardHeader>
+          <CardTitle>Riwayat shift</CardTitle>
+          <CardDescription>Hasil penutupan kas dan selisih</CardDescription>
+          <CardAction><Banknote className="size-5 text-muted-foreground" /></CardAction>
+        </CardHeader>
+        <CardContent>
+          <ShiftHistoryTable shifts={data.recentShifts} />
+        </CardContent>
       </Card>
     </div>
   );
@@ -1878,52 +2172,57 @@ function ShiftCard({ shift, pending, runAction }: { shift: CashShift | null; pen
   }
 
   return (
-    <Card className="panel">
-      <div className="panel-heading">
-        <div>
-          <h2>Shift kas</h2>
-          <p>{shift ? `Dibuka ${dateTime(shift.openedAt)} oleh ${shift.openedByName}` : "Buka shift sebelum menerima pembayaran tunai."}</p>
-        </div>
-        <Banknote size={18} className="muted-icon" />
-      </div>
-      {shift === null ? (
-        <form className="adjustment-form" onSubmit={openShift}>
-          <label className="field-label">
-            Modal awal laci (Rp)
-            <Input type="number" min={0} step={1} value={openingFloat} onChange={(event) => setOpeningFloat(event.target.value)} />
-          </label>
-          <Button type="submit" disabled={pending}>Buka shift <ArrowRight size={15} /></Button>
-        </form>
-      ) : (
-        <>
-          <div className="cash-breakdown">
-            <div><span>Modal awal</span><strong>{money(shift.openingFloat)}</strong></div>
-            <div><span>Penjualan tunai</span><strong>{money(breakdown.cashSales)}</strong></div>
-            <div><span>Refund tunai</span><strong>−{money(breakdown.cashRefunds)}</strong></div>
-            <div><span>Pengeluaran dari laci</span><strong>−{money(breakdown.drawerExpenses)}</strong></div>
-            <div className="cash-breakdown-total"><span>Kas seharusnya</span><strong>{money(shift.expectedCash)}</strong></div>
-          </div>
-          <form className="adjustment-form" onSubmit={closeShift}>
-            <div className="cash-form-row">
-              <label className="field-label">
-                Uang dihitung di laci (Rp)
-                <Input type="number" min={0} step={1} value={countedCash} onChange={(event) => setCountedCash(event.target.value)} />
-              </label>
-              <div className="cash-difference">
-                <span className="field-label">Selisih</span>
-                <strong className={liveDifference === null ? "" : liveDifference === 0 ? "text-good" : "text-warning"}>
-                  {liveDifference === null ? "—" : money(liveDifference)}
-                </strong>
-              </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Shift kas</CardTitle>
+        <CardDescription>{shift ? `Dibuka ${dateTime(shift.openedAt)} oleh ${shift.openedByName}` : "Buka shift sebelum menerima pembayaran tunai."}</CardDescription>
+        <CardAction><Banknote className="size-5 text-muted-foreground" /></CardAction>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        {shift === null ? (
+          <form className="flex flex-col gap-4" onSubmit={openShift}>
+            <div className="flex flex-col gap-2">
+              <Label>Modal awal laci (Rp)</Label>
+              <Input type="number" min={0} step={1} value={openingFloat} onChange={(event) => setOpeningFloat(event.target.value)} />
             </div>
-            <label className="field-label">
-              Catatan penutupan
-              <Input value={closeNote} maxLength={240} onChange={(event) => setCloseNote(event.target.value)} placeholder="Opsional" />
-            </label>
-            <Button type="submit" disabled={pending || counted === null}>Tutup shift</Button>
+            <Button type="submit" disabled={pending}>Buka shift <ArrowRight data-icon="inline-end" /></Button>
           </form>
-        </>
-      )}
+        ) : (
+          <>
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg bg-muted/50 p-4 text-sm">
+              <dt className="text-muted-foreground">Modal awal</dt>
+              <dd className="text-right font-medium">{money(shift.openingFloat)}</dd>
+              <dt className="text-muted-foreground">Penjualan tunai</dt>
+              <dd className="text-right font-medium">{money(breakdown.cashSales)}</dd>
+              <dt className="text-muted-foreground">Refund tunai</dt>
+              <dd className="text-right font-medium">−{money(breakdown.cashRefunds)}</dd>
+              <dt className="text-muted-foreground">Pengeluaran dari laci</dt>
+              <dd className="text-right font-medium">−{money(breakdown.drawerExpenses)}</dd>
+              <dt className="border-t pt-2 font-semibold">Kas seharusnya</dt>
+              <dd className="border-t pt-2 text-right text-base font-semibold">{money(shift.expectedCash)}</dd>
+            </dl>
+            <form className="flex flex-col gap-4" onSubmit={closeShift}>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="flex flex-col gap-2">
+                  <Label>Uang dihitung di laci (Rp)</Label>
+                  <Input type="number" min={0} step={1} value={countedCash} onChange={(event) => setCountedCash(event.target.value)} />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label>Selisih</Label>
+                  <div className={`flex h-9 items-center rounded-md border px-3 font-semibold ${liveDifference === null ? "" : liveDifference === 0 ? "text-emerald-600" : "text-amber-600"}`}>
+                    {liveDifference === null ? "—" : money(liveDifference)}
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label>Catatan penutupan</Label>
+                <Input value={closeNote} maxLength={240} onChange={(event) => setCloseNote(event.target.value)} placeholder="Opsional" />
+              </div>
+              <Button type="submit" disabled={pending || counted === null}>Tutup shift</Button>
+            </form>
+          </>
+        )}
+      </CardContent>
     </Card>
   );
 }
@@ -1990,64 +2289,73 @@ function ExpenseForm({
   }
 
   return (
-    <Card className="panel">
-      <div className="panel-heading">
-        <div>
-          <h2>Catat pengeluaran</h2>
-          <p>Belanja stok otomatis menambah stok bahan.</p>
-        </div>
-        <Receipt size={18} className="muted-icon" />
-      </div>
-      {drawerBlocked && <p className="checkout-warning">Buka shift kas dulu untuk belanja dari laci.</p>}
-      <form className="adjustment-form" onSubmit={submit}>
-        <label className="field-label">
-          Sumber dana
-          <select className="field-select" value={source} onChange={(event) => setSource(event.target.value as ExpenseSource)}>
-            <option value="Drawer">{expenseSourceLabels.Drawer}</option>
-            <option value="Non-cash">{expenseSourceLabels["Non-cash"]}</option>
-          </select>
-        </label>
-        <label className="field-label">
-          PIC pembeli
-          <Input list={listId} value={picName} maxLength={60} onChange={(event) => setPicName(event.target.value)} placeholder="Nama yang berbelanja" />
-        </label>
-        <datalist id={listId}>
-          {picSuggestions.map((name) => <option key={name} value={name} />)}
-        </datalist>
-        <label className="field-label">
-          Bahan dibeli
-          <select className="field-select" value={activeIngredientId} onChange={(event) => setIngredientId(event.target.value)} disabled={ingredients.length === 0}>
-            {ingredients.length === 0 && <option value="">Belum ada bahan</option>}
-            {ingredients.map((ingredient) => (
-              <option key={ingredient.id} value={ingredient.id}>{ingredient.name} ({ingredient.unit})</option>
-            ))}
-          </select>
-        </label>
-        <div className="cash-form-row">
-          <label className="field-label">
-            Jumlah{selectedIngredient ? ` (${selectedIngredient.unit})` : ""}
+    <Card>
+      <CardHeader>
+        <CardTitle>Catat pengeluaran</CardTitle>
+        <CardDescription>Belanja stok otomatis menambah stok bahan.</CardDescription>
+        <CardAction><Receipt className="size-5 text-muted-foreground" /></CardAction>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        {drawerBlocked && (
+          <Alert variant="destructive">
+            <AlertDescription>Buka shift kas dulu untuk belanja dari laci.</AlertDescription>
+          </Alert>
+        )}
+        <form className="grid gap-4 sm:grid-cols-2" onSubmit={submit}>
+          <div className="flex flex-col gap-2">
+            <Label>Sumber dana</Label>
+            <Select value={source} onValueChange={(next) => setSource(next as ExpenseSource)}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Drawer">{expenseSourceLabels.Drawer}</SelectItem>
+                <SelectItem value="Non-cash">{expenseSourceLabels["Non-cash"]}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label>PIC pembeli</Label>
+            <Input list={listId} value={picName} maxLength={60} onChange={(event) => setPicName(event.target.value)} placeholder="Nama yang berbelanja" />
+            <datalist id={listId}>
+              {picSuggestions.map((name) => <option key={name} value={name} />)}
+            </datalist>
+          </div>
+          <div className="flex flex-col gap-2 sm:col-span-2">
+            <Label>Bahan dibeli</Label>
+            <Select value={activeIngredientId} onValueChange={(next) => setIngredientId(next ?? "")} disabled={ingredients.length === 0}>
+              <SelectTrigger className="w-full"><SelectValue placeholder="Belum ada bahan" /></SelectTrigger>
+              <SelectContent>
+                {ingredients.map((ingredient) => (
+                  <SelectItem key={ingredient.id} value={ingredient.id}>{ingredient.name} ({ingredient.unit})</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label>Jumlah{selectedIngredient ? ` (${selectedIngredient.unit})` : ""}</Label>
             <Input type="number" min={0} step="any" value={quantity} onChange={(event) => setQuantity(event.target.value)} />
-          </label>
-          <label className="field-label">
-            Total harga (Rp)
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label>Total harga (Rp)</Label>
             <Input type="number" min={1} step={1} value={total} onChange={(event) => setTotal(event.target.value)} />
-          </label>
-        </div>
-        <label className="field-label">
-          Catatan
-          <Input value={note} maxLength={240} onChange={(event) => setNote(event.target.value)} placeholder="Opsional" />
-        </label>
-        <label className="field-label">
-          Foto nota (wajib)
-          <Input key={receiptKey} type="file" accept="image/*" onChange={(event) => setReceipt(event.target.files?.[0] ?? null)} />
-        </label>
-        <p className="expense-hint">
-          {needsApproval
-            ? `Di atas ${money(threshold)}: pengeluaran menunggu persetujuan admin.`
-            : `Sampai ${money(threshold)}: otomatis disetujui.`}
-        </p>
-        <Button type="submit" disabled={pending || drawerBlocked || ingredients.length === 0}>Simpan pengeluaran</Button>
-      </form>
+          </div>
+          <div className="flex flex-col gap-2 sm:col-span-2">
+            <Label>Catatan</Label>
+            <Input value={note} maxLength={240} onChange={(event) => setNote(event.target.value)} placeholder="Opsional" />
+          </div>
+          <div className="flex flex-col gap-2 sm:col-span-2">
+            <Label>Foto nota (wajib)</Label>
+            <Input key={receiptKey} type="file" accept="image/*" onChange={(event) => setReceipt(event.target.files?.[0] ?? null)} />
+          </div>
+          <p className="text-sm text-muted-foreground sm:col-span-2">
+            {needsApproval
+              ? `Di atas ${money(threshold)}: pengeluaran menunggu persetujuan admin.`
+              : `Sampai ${money(threshold)}: otomatis disetujui.`}
+          </p>
+          <div className="sm:col-span-2">
+            <Button type="submit" disabled={pending || drawerBlocked || ingredients.length === 0}>Simpan pengeluaran</Button>
+          </div>
+        </form>
+      </CardContent>
     </Card>
   );
 }
@@ -2072,43 +2380,51 @@ function ExpenseTable({
 
   if (expenses.length === 0) return <EmptyState text="Belum ada pengeluaran." />;
   return (
-    <div className="responsive-table">
-      <table className="inventory-table">
-        <thead>
-          <tr><th>WAKTU</th><th>SUMBER</th><th>PIC</th><th>BAHAN</th><th>JUMLAH</th><th>TOTAL</th><th>NOTA</th><th>STATUS</th>{isAdmin && <th>AKSI</th>}</tr>
-        </thead>
-        <tbody>
-          {expenses.map((expense) => (
-            <tr key={expense.id}>
-              <td>{dateTime(expense.createdAt)}</td>
-              <td>{expenseSourceLabels[expense.source]}</td>
-              <td>{expense.picName}</td>
-              <td>{expense.ingredientName}</td>
-              <td>{expense.quantity} {expense.unit}</td>
-              <td>{money(expense.total)}</td>
-              <td><a className="receipt-link" href={expense.receiptUrl} target="_blank" rel="noreferrer">Lihat nota</a></td>
-              <td>
-                <Badge variant="secondary" className={expense.status === "Rejected" ? "inventory-warning" : expense.status === "Pending" ? "inventory-warning" : "inventory-safe"}>
-                  {expenseStatusLabels[expense.status]}
-                </Badge>
-              </td>
-              {isAdmin && (
-                <td>
-                  {expense.status === "Pending" ? (
-                    <div className="table-actions">
-                      <Button variant="outline" size="sm" disabled={pending} onClick={() => decide(expense, "approve")}>Setujui</Button>
-                      <Button variant="outline" size="sm" disabled={pending} onClick={() => decide(expense, "reject")}>Tolak</Button>
-                    </div>
-                  ) : (
-                    <span className="sub-cell">{expense.decidedByName ? `oleh ${expense.decidedByName}` : "—"}</span>
-                  )}
-                </td>
-              )}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Waktu</TableHead>
+          <TableHead>Sumber</TableHead>
+          <TableHead>PIC</TableHead>
+          <TableHead>Bahan</TableHead>
+          <TableHead>Jumlah</TableHead>
+          <TableHead>Total</TableHead>
+          <TableHead>Nota</TableHead>
+          <TableHead>Status</TableHead>
+          {isAdmin && <TableHead className="text-right">Aksi</TableHead>}
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {expenses.map((expense) => (
+          <TableRow key={expense.id}>
+            <TableCell>{dateTime(expense.createdAt)}</TableCell>
+            <TableCell>{expenseSourceLabels[expense.source]}</TableCell>
+            <TableCell>{expense.picName}</TableCell>
+            <TableCell>{expense.ingredientName}</TableCell>
+            <TableCell>{expense.quantity} {expense.unit}</TableCell>
+            <TableCell className="font-medium">{money(expense.total)}</TableCell>
+            <TableCell><a className="text-primary underline-offset-4 hover:underline" href={expense.receiptUrl} target="_blank" rel="noreferrer">Lihat nota</a></TableCell>
+            <TableCell>
+              <Badge variant={expense.status === "Approved" ? "default" : expense.status === "Rejected" ? "destructive" : "secondary"}>
+                {expenseStatusLabels[expense.status]}
+              </Badge>
+            </TableCell>
+            {isAdmin && (
+              <TableCell>
+                {expense.status === "Pending" ? (
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" size="sm" disabled={pending} onClick={() => decide(expense, "approve")}>Setujui</Button>
+                    <Button variant="outline" size="sm" disabled={pending} onClick={() => decide(expense, "reject")}>Tolak</Button>
+                  </div>
+                ) : (
+                  <span className="block text-right text-sm text-muted-foreground">{expense.decidedByName ? `oleh ${expense.decidedByName}` : "—"}</span>
+                )}
+              </TableCell>
+            )}
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }
 
@@ -2116,29 +2432,35 @@ function ShiftHistoryTable({ shifts }: { shifts: CashShift[] }) {
   const closed = shifts.filter((shift) => shift.closedAt !== null);
   if (closed.length === 0) return <EmptyState text="Belum ada shift yang ditutup." />;
   return (
-    <div className="responsive-table">
-      <table className="inventory-table">
-        <thead>
-          <tr><th>DITUTUP</th><th>OLEH</th><th>MODAL</th><th>SEHARUSNYA</th><th>DIHITUNG</th><th>SELISIH</th><th>CATATAN</th></tr>
-        </thead>
-        <tbody>
-          {closed.map((shift) => {
-            const difference = shift.difference ?? 0;
-            return (
-              <tr key={shift.id}>
-                <td>{dateTime(shift.closedAt ?? shift.openedAt)}</td>
-                <td>{shift.closedByName ?? shift.openedByName}</td>
-                <td>{money(shift.openingFloat)}</td>
-                <td>{money(shift.expectedCash)}</td>
-                <td>{money(shift.countedCash ?? 0)}</td>
-                <td className={difference === 0 ? "text-good" : "text-warning"}>{money(difference)}</td>
-                <td>{shift.closeNote || "—"}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Ditutup</TableHead>
+          <TableHead>Oleh</TableHead>
+          <TableHead>Modal</TableHead>
+          <TableHead>Seharusnya</TableHead>
+          <TableHead>Dihitung</TableHead>
+          <TableHead>Selisih</TableHead>
+          <TableHead>Catatan</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {closed.map((shift) => {
+          const difference = shift.difference ?? 0;
+          return (
+            <TableRow key={shift.id}>
+              <TableCell>{dateTime(shift.closedAt ?? shift.openedAt)}</TableCell>
+              <TableCell>{shift.closedByName ?? shift.openedByName}</TableCell>
+              <TableCell>{money(shift.openingFloat)}</TableCell>
+              <TableCell>{money(shift.expectedCash)}</TableCell>
+              <TableCell>{money(shift.countedCash ?? 0)}</TableCell>
+              <TableCell className={difference === 0 ? "font-medium text-emerald-600" : "font-medium text-amber-600"}>{money(difference)}</TableCell>
+              <TableCell>{shift.closeNote || "—"}</TableCell>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
   );
 }
 
@@ -2156,44 +2478,74 @@ function ReportsScreen({ data }: { data: PosBootstrap }) {
   }, [data.orders]);
   const maxMethod = Math.max(1, ...orderMethods.map(([, total]) => total));
   return (
-    <div className="screen-stack">
-      <SectionTitle eyebrow="PERFORMA BISNIS" title="Laporan" action={<Badge variant="secondary">7 hari terakhir</Badge>} />
-      <div className="metric-grid">
-        <MetricCard icon={Wallet} label="Penjualan hari ini" value={money(summary.todaySales)} note={`${summary.todayOrders} transaksi non-batal`} tone="metric-green" />
-        <MetricCard icon={ChartNoAxesCombined} label="Rata-rata per hari" value={money(Math.round(summary.dailySales.reduce((sum, sale) => sum + sale.total, 0) / 7))} note="7 hari terakhir" tone="metric-blue" />
-        <MetricCard icon={ClipboardList} label="Pesanan aktif" value={String(summary.activeOrders)} note="Belum selesai diambil" tone="metric-orange" />
+    <div className="flex flex-col gap-6">
+      <SectionTitle eyebrow="Performa bisnis" title="Laporan" action={<Badge variant="secondary">7 hari terakhir</Badge>} />
+      <div className="grid gap-4 md:grid-cols-3">
+        <MetricCard icon={Wallet} label="Penjualan hari ini" value={money(summary.todaySales)} note={`${summary.todayOrders} transaksi non-batal`} tone="bg-emerald-500/10 text-emerald-600" />
+        <MetricCard icon={ChartNoAxesCombined} label="Rata-rata per hari" value={money(Math.round(summary.dailySales.reduce((sum, sale) => sum + sale.total, 0) / 7))} note="7 hari terakhir" tone="bg-primary/10 text-primary" />
+        <MetricCard icon={ClipboardList} label="Pesanan aktif" value={String(summary.activeOrders)} note="Belum selesai diambil" tone="bg-amber-500/10 text-amber-600" />
       </div>
-      <div className="dashboard-grid report-grid">
-        <Card className="panel report-chart">
-          <div className="panel-heading"><div><h2>Tren penjualan</h2><p>Nilai transaksi per hari</p></div><ChartNoAxesCombined size={18} className="muted-icon" /></div>
-          <div className="sales-total">{money(summary.dailySales.reduce((sum, item) => sum + item.total, 0))}<span>Penjualan dalam periode</span></div>
-          <div className="sales-chart">
-            {summary.dailySales.map((sale) => (
-              <div className="chart-column" key={sale.date}>
-                <span className="chart-tooltip">{money(sale.total)}</span>
-                <div className="chart-bar-track"><div className="chart-bar" style={{ height: `${Math.max(4, sale.total / maxDaily * 100)}%` }} /></div>
-                <span className="chart-label">{sale.label}</span>
+      <div className="grid gap-6 xl:grid-cols-[1.6fr_1fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Tren penjualan</CardTitle>
+            <CardDescription>Nilai transaksi per hari</CardDescription>
+            <CardAction><ChartNoAxesCombined className="size-5 text-muted-foreground" /></CardAction>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <div className="text-2xl font-semibold tabular-nums">
+              {money(summary.dailySales.reduce((sum, item) => sum + item.total, 0))}
+              <span className="ml-2 text-sm font-normal text-muted-foreground">Penjualan dalam periode</span>
+            </div>
+            <div className="flex h-48 items-end gap-2">
+              {summary.dailySales.map((sale) => (
+                <div className="group flex h-full flex-1 flex-col items-center justify-end gap-1" key={sale.date}>
+                  <span className="text-xs text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">{money(sale.total)}</span>
+                  <div className="flex w-full flex-1 items-end">
+                    <div className="w-full rounded-t-md bg-primary" style={{ height: `${Math.max(4, sale.total / maxDaily * 100)}%` }} />
+                  </div>
+                  <span className="text-xs text-muted-foreground">{sale.label}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Metode pembayaran</CardTitle>
+            <CardDescription>Ringkasan pada 100 transaksi terbaru</CardDescription>
+            <CardAction><CreditCard className="size-5 text-muted-foreground" /></CardAction>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            {orderMethods.length === 0 ? <EmptyState text="Belum ada transaksi." /> : orderMethods.map(([method, total]) => (
+              <div className="flex flex-col gap-2" key={method}>
+                <div className="flex items-center justify-between text-sm">
+                  <span>{method}</span>
+                  <strong className="font-semibold">{money(total)}</strong>
+                </div>
+                <Progress value={total / maxMethod * 100} />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Produk terlaris hari ini</CardTitle>
+          <CardDescription>Rekap jumlah item terjual</CardDescription>
+          <CardAction><Coffee className="size-5 text-muted-foreground" /></CardAction>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {summary.topProducts.length === 0 ? <EmptyState text="Belum ada penjualan hari ini." /> : summary.topProducts.map((product, index) => (
+              <div className="flex flex-col gap-1 rounded-lg border bg-muted/40 p-4" key={product.name}>
+                <span className="text-sm text-muted-foreground">0{index + 1}</span>
+                <strong className="font-semibold">{product.name}</strong>
+                <span className="text-sm">{product.quantity} item</span>
               </div>
             ))}
           </div>
-        </Card>
-        <Card className="panel payment-report">
-          <div className="panel-heading"><div><h2>Metode pembayaran</h2><p>Ringkasan pada 100 transaksi terbaru</p></div><CreditCard size={18} className="muted-icon" /></div>
-          {orderMethods.length === 0 ? <EmptyState text="Belum ada transaksi." /> : orderMethods.map(([method, total]) => (
-            <div className="payment-report-row" key={method}>
-              <div className="payment-report-label"><span>{method}</span><strong>{money(total)}</strong></div>
-              <div className="payment-progress"><span style={{ width: `${total / maxMethod * 100}%` }} /></div>
-            </div>
-          ))}
-        </Card>
-      </div>
-      <Card className="panel table-panel">
-        <div className="table-toolbar"><div><h2>Produk terlaris hari ini</h2><p>Rekap jumlah item terjual</p></div><Coffee size={18} className="muted-icon" /></div>
-        <div className="best-products-grid">
-          {summary.topProducts.length === 0 ? <EmptyState text="Belum ada penjualan hari ini." /> : summary.topProducts.map((product, index) => (
-            <div className="best-product-card" key={product.name}><span>0{index + 1}</span><strong>{product.name}</strong><b>{product.quantity} item</b></div>
-          ))}
-        </div>
+        </CardContent>
       </Card>
     </div>
   );
@@ -2228,7 +2580,7 @@ function ImageUploadControls({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   return (
-    <div className="image-upload-controls">
+    <div className="flex flex-wrap items-center gap-2">
       <input
         ref={inputRef}
         type="file"
@@ -2241,11 +2593,11 @@ function ImageUploadControls({
         }}
       />
       <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => inputRef.current?.click()}>
-        <Upload size={14} /> {uploadLabel}
+        <Upload data-icon="inline-start" /> {uploadLabel}
       </Button>
       {hasImage && (
         <Button type="button" variant="ghost" size="sm" disabled={disabled} onClick={onRemove}>
-          <Trash2 size={14} /> Hapus
+          <Trash2 data-icon="inline-start" /> Hapus
         </Button>
       )}
     </div>
@@ -2268,30 +2620,34 @@ function StoreProfileCard({ data, pending, runAction }: { data: PosBootstrap; pe
   }
 
   return (
-    <Card className="panel settings-card">
-      <div className="settings-card-icon"><Store size={20} /></div>
-      <h2>Profil toko</h2>
-      <p>Nama dan logo tampil di sidebar, nota, dan tiket cetak.</p>
-      <div className="settings-media-row">
-        <div className="logo-preview">
-          {data.outletLogoUrl ? <img src={data.outletLogoUrl} alt="Logo toko" /> : <Coffee size={22} />}
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><Store className="size-5 text-muted-foreground" /> Profil toko</CardTitle>
+        <CardDescription>Nama dan logo tampil di sidebar, nota, dan tiket cetak.</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted">
+            {data.outletLogoUrl ? <img className="size-full object-cover" src={data.outletLogoUrl} alt="Logo toko" /> : <Coffee className="size-6 text-muted-foreground" />}
+          </div>
+          <ImageUploadControls
+            hasImage={data.outletLogoUrl !== null}
+            uploadLabel="Unggah logo"
+            disabled={pending}
+            onUpload={uploadLogo}
+            onRemove={() => runAction(() => requestJson("/api/settings/logo", "DELETE"), "Logo toko dihapus.")}
+          />
         </div>
-        <ImageUploadControls
-          hasImage={data.outletLogoUrl !== null}
-          uploadLabel="Unggah logo"
-          disabled={pending}
-          onUpload={uploadLogo}
-          onRemove={() => runAction(() => requestJson("/api/settings/logo", "DELETE"), "Logo toko dihapus.")}
-        />
-      </div>
-      <form className="settings-form" onSubmit={saveName}>
-        <label className="field-label">Nama toko
-          <Input value={storeName} maxLength={60} onChange={(event) => setStoreName(event.target.value)} />
-        </label>
-        <Button type="submit" className="settings-save" disabled={pending || trimmedName.length < 3 || trimmedName === data.outletName}>
-          Simpan nama toko <ArrowRight size={15} />
-        </Button>
-      </form>
+        <form className="flex flex-col gap-4" onSubmit={saveName}>
+          <div className="flex flex-col gap-2">
+            <Label>Nama toko</Label>
+            <Input value={storeName} maxLength={60} onChange={(event) => setStoreName(event.target.value)} />
+          </div>
+          <Button type="submit" disabled={pending || trimmedName.length < 3 || trimmedName === data.outletName}>
+            Simpan nama toko <ArrowRight data-icon="inline-end" />
+          </Button>
+        </form>
+      </CardContent>
     </Card>
   );
 }
@@ -2332,47 +2688,54 @@ function AccountCard({ data, pending, runAction }: { data: PosBootstrap; pending
   }
 
   return (
-    <Card className="panel settings-card">
-      <div className="settings-card-icon settings-info-icon"><UserRound size={20} /></div>
-      <h2>Akun saya</h2>
-      <p>Foto dan nama Anda tampil di sidebar dan topbar.</p>
-      <div className="settings-media-row">
-        <Avatar src={data.userAvatarUrl} name={data.user.name} className="profile-avatar" />
-        <ImageUploadControls
-          hasImage={data.userAvatarUrl !== null}
-          uploadLabel="Ganti foto"
-          disabled={pending}
-          onUpload={uploadAvatar}
-          onRemove={() => runAction(() => requestJson("/api/account/avatar", "DELETE"), "Foto profil dihapus.")}
-        />
-      </div>
-      <form className="settings-form" onSubmit={saveName}>
-        <label className="field-label">Nama tampilan
-          <Input value={displayName} maxLength={60} onChange={(event) => setDisplayName(event.target.value)} />
-        </label>
-        <Button type="submit" className="settings-save" disabled={pending || trimmedName.length < 2 || trimmedName === data.user.name}>
-          Simpan nama <ArrowRight size={15} />
-        </Button>
-      </form>
-      <form className="settings-form settings-password-form" onSubmit={savePassword}>
-        <span className="settings-subtitle">Ubah password</span>
-        <label className="field-label">Password saat ini
-          <Input type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} />
-        </label>
-        <label className="field-label">Password baru
-          <Input type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
-        </label>
-        <label className="field-label">Ulangi password baru
-          <Input type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
-        </label>
-        <Button
-          type="submit"
-          className="settings-save"
-          disabled={pending || !currentPassword || newPassword.length < 8 || !confirmPassword}
-        >
-          Ubah password <ArrowRight size={15} />
-        </Button>
-      </form>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><UserRound className="size-5 text-muted-foreground" /> Akun saya</CardTitle>
+        <CardDescription>Foto dan nama Anda tampil di sidebar dan topbar.</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-6">
+        <div className="flex flex-wrap items-center gap-4">
+          <Avatar src={data.userAvatarUrl} name={data.user.name} className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-lg font-semibold text-primary" />
+          <ImageUploadControls
+            hasImage={data.userAvatarUrl !== null}
+            uploadLabel="Ganti foto"
+            disabled={pending}
+            onUpload={uploadAvatar}
+            onRemove={() => runAction(() => requestJson("/api/account/avatar", "DELETE"), "Foto profil dihapus.")}
+          />
+        </div>
+        <form className="flex flex-col gap-4" onSubmit={saveName}>
+          <div className="flex flex-col gap-2">
+            <Label>Nama tampilan</Label>
+            <Input value={displayName} maxLength={60} onChange={(event) => setDisplayName(event.target.value)} />
+          </div>
+          <Button type="submit" disabled={pending || trimmedName.length < 2 || trimmedName === data.user.name}>
+            Simpan nama <ArrowRight data-icon="inline-end" />
+          </Button>
+        </form>
+        <Separator />
+        <form className="flex flex-col gap-4" onSubmit={savePassword}>
+          <span className="font-medium">Ubah password</span>
+          <div className="flex flex-col gap-2">
+            <Label>Password saat ini</Label>
+            <Input type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label>Password baru</Label>
+            <Input type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label>Ulangi password baru</Label>
+            <Input type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
+          </div>
+          <Button
+            type="submit"
+            disabled={pending || !currentPassword || newPassword.length < 8 || !confirmPassword}
+          >
+            Ubah password <ArrowRight data-icon="inline-end" />
+          </Button>
+        </form>
+      </CardContent>
     </Card>
   );
 }
@@ -2400,25 +2763,30 @@ function AccountsCard({ data, pending, runAction }: { data: PosBootstrap; pendin
   }
 
   return (
-    <Card className="panel settings-card settings-card-wide">
-      <div className="settings-card-icon"><Users size={20} /></div>
-      <h2>Kelola akun</h2>
-      <p>Atur ulang password akun karyawan jika mereka lupa. Password akun Anda sendiri diubah di bagian Akun saya.</p>
-      <div className="account-list">
+    <Card className="lg:col-span-2">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><Users className="size-5 text-muted-foreground" /> Kelola akun</CardTitle>
+        <CardDescription>Atur ulang password akun karyawan jika mereka lupa. Password akun Anda sendiri diubah di bagian Akun saya.</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
         {otherAccounts.length === 0 && <EmptyState text="Belum ada akun karyawan lain." />}
         {otherAccounts.map((account) => (
-          <div className="account-row" key={account.id}>
-            <div className="account-row-main">
-              <Avatar src={account.avatarUrl} name={account.name} className="account-avatar" />
-              <div className="account-info"><strong>{account.name}</strong><span>@{account.username}</span></div>
+          <div className="rounded-lg border p-3" key={account.id}>
+            <div className="flex flex-wrap items-center gap-3">
+              <Avatar src={account.avatarUrl} name={account.name} className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-sm font-semibold text-primary" />
+              <div className="flex min-w-0 flex-1 flex-col">
+                <strong className="truncate font-medium">{account.name}</strong>
+                <span className="text-sm text-muted-foreground">@{account.username}</span>
+              </div>
               <Badge variant="secondary">{roleLabels[account.role]}</Badge>
               <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => toggleReset(account.id)}>
-                <KeyRound size={14} /> Atur ulang password
+                <KeyRound data-icon="inline-start" /> Atur ulang password
               </Button>
             </div>
             {resetId === account.id && (
-              <form className="account-reset-form" onSubmit={(event) => resetAccount(event, account)}>
+              <form className="mt-3 flex flex-wrap items-center gap-2" onSubmit={(event) => resetAccount(event, account)}>
                 <Input
+                  className="max-w-xs"
                   type="password"
                   autoComplete="new-password"
                   placeholder="Password baru (min. 8 karakter)"
@@ -2426,12 +2794,12 @@ function AccountsCard({ data, pending, runAction }: { data: PosBootstrap; pendin
                   onChange={(event) => setResetPassword(event.target.value)}
                 />
                 <Button type="submit" size="sm" disabled={pending || resetPassword.length < 8}>Simpan</Button>
-                <span>Sesi aktif akun ini akan keluar otomatis.</span>
+                <span className="text-sm text-muted-foreground">Sesi aktif akun ini akan keluar otomatis.</span>
               </form>
             )}
           </div>
         ))}
-      </div>
+      </CardContent>
     </Card>
   );
 }
@@ -2453,49 +2821,70 @@ function SettingsScreen({
     );
   }
   return (
-    <div className="screen-stack">
+    <div className="flex flex-col gap-6">
       <SectionTitle eyebrow="KONFIGURASI OUTLET" title="Pengaturan" />
-      <div className="settings-grid">
+      <div className="grid gap-4 lg:grid-cols-2">
         <StoreProfileCard data={data} pending={pending} runAction={runAction} />
         <AccountCard data={data} pending={pending} runAction={runAction} />
         <AccountsCard data={data} pending={pending} runAction={runAction} />
-        <Card className="panel settings-card">
-          <div className="settings-card-icon"><Printer size={20} /></div>
-          <h2>Pencetakan nota</h2>
-          <p>Atur lebar kertas printer thermal. Lebar ini juga dipakai saat cetak langsung dari server.</p>
-          <label className="field-label">Lebar kertas
-            <select className="field-select" value={width} onChange={(event) => setWidth(Number(event.target.value) as 58 | 80)}>
-              <option value={58}>58 mm · compact</option>
-              <option value={80}>80 mm · standar</option>
-            </select>
-          </label>
-          <div className={`paper-preview paper-${width}`}>
-            <span>{data.outletName}</span><span>Preview lebar {width} mm</span><div /><i />
-          </div>
-          <Button className="settings-save" onClick={saveReceipt} disabled={pending}>Simpan pengaturan <ArrowRight size={15} /></Button>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Printer className="size-5 text-muted-foreground" /> Pencetakan nota</CardTitle>
+            <CardDescription>Atur lebar kertas printer thermal. Lebar ini juga dipakai saat cetak langsung dari server.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <Label>Lebar kertas</Label>
+              <Select value={String(width)} onValueChange={(next) => setWidth(Number(next ?? 80) as 58 | 80)}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="58">58 mm · compact</SelectItem>
+                  <SelectItem value="80">80 mm · standar</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="mx-auto flex flex-col items-center gap-1 rounded-md border border-dashed bg-muted/40 p-4 text-center text-sm" style={{ width: width === 58 ? "58%" : "80%" }}>
+              <span className="font-semibold">{data.outletName}</span>
+              <span className="text-muted-foreground">Preview lebar {width} mm</span>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button onClick={saveReceipt} disabled={pending}>Simpan pengaturan <ArrowRight data-icon="inline-end" /></Button>
+          </CardFooter>
         </Card>
         <ExpenseApprovalCard data={data} pending={pending} runAction={runAction} />
         <PrinterCard data={data} pending={pending} runAction={runAction} />
         <TaxReceiptCard data={data} pending={pending} runAction={runAction} />
-        <Card className="panel settings-card settings-card-wide">
-          <div className="settings-card-icon"><Store size={20} /></div>
-          <h2>Denah meja</h2>
-          <p>Atur meja dan posisinya di peta outlet. Kasir memilih meja dari denah yang sama.</p>
-          <TableLayoutEditor tables={data.tables} shapes={data.mapShapes} pending={pending} runAction={runAction} />
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Store className="size-5 text-muted-foreground" /> Denah meja</CardTitle>
+            <CardDescription>Atur meja dan posisinya di peta outlet. Kasir memilih meja dari denah yang sama.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <TableLayoutEditor tables={data.tables} shapes={data.mapShapes} pending={pending} runAction={runAction} />
+          </CardContent>
         </Card>
-        <Card className="panel settings-card settings-info">
-          <div className="settings-card-icon settings-info-icon"><UserRound size={20} /></div>
-          <h2>Akses & keamanan</h2>
-          <p>Akun demo menggunakan role operasional dengan izin yang dibatasi di sisi server.</p>
-          <div className="role-list">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><UserRound className="size-5 text-muted-foreground" /> Akses & keamanan</CardTitle>
+            <CardDescription>Akun demo menggunakan role operasional dengan izin yang dibatasi di sisi server.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
             {[
               ["admin", "Kelola menu, stok, laporan, dan pembatalan"],
               ["kasir", "Transaksi, cetak, dan penyelesaian pickup"],
               ["barista", "Lihat dan proses tiket minuman"],
               ["kitchen", "Lihat dan proses tiket makanan"],
-            ].map(([label, description]) => <div key={label}><Badge variant="secondary">{label}</Badge><span>{description}</span></div>)}
-          </div>
-          <div className="server-note"><span className="live-dot" /> Server berjalan lokal · Database SQLite</div>
+            ].map(([label, description]) => (
+              <div className="flex items-center gap-3 text-sm" key={label}>
+                <Badge variant="secondary" className="w-20 justify-center">{label}</Badge>
+                <span className="text-muted-foreground">{description}</span>
+              </div>
+            ))}
+          </CardContent>
+          <CardFooter className="text-sm text-muted-foreground">
+            <span className="mr-2 inline-block size-2 rounded-full bg-emerald-500" /> Server berjalan lokal · Database SQLite
+          </CardFooter>
         </Card>
       </div>
     </div>
@@ -2533,15 +2922,18 @@ function ExpenseApprovalCard({ data, pending, runAction }: { data: PosBootstrap;
   }
 
   return (
-    <Card className="panel settings-card">
-      <div className="settings-card-icon"><Banknote size={20} /></div>
-      <h2>Persetujuan pengeluaran</h2>
-      <p>Pengeluaran di atas batas ini menunggu persetujuan admin. Bahan tetap masuk stok dan pengeluaran laci tetap dihitung sampai ditolak.</p>
-      <label className="field-label">
-        Batas (Rp)
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><Banknote className="size-5 text-muted-foreground" /> Persetujuan pengeluaran</CardTitle>
+        <CardDescription>Pengeluaran di atas batas ini menunggu persetujuan admin. Bahan tetap masuk stok dan pengeluaran laci tetap dihitung sampai ditolak.</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2">
+        <Label>Batas (Rp)</Label>
         <Input type="number" min={0} step={1} value={threshold} onChange={(event) => setThreshold(event.target.value)} />
-      </label>
-      <Button className="settings-save" onClick={save} disabled={pending}>Simpan batas <ArrowRight size={15} /></Button>
+      </CardContent>
+      <CardFooter>
+        <Button onClick={save} disabled={pending}>Simpan batas <ArrowRight data-icon="inline-end" /></Button>
+      </CardFooter>
     </Card>
   );
 }
@@ -2637,87 +3029,104 @@ function PrinterCard({ data, pending, runAction }: { data: PosBootstrap; pending
   }
 
   return (
-    <Card className="panel settings-card">
-      <div className="settings-card-icon"><Printer size={20} /></div>
-      <h2>Printer thermal (server)</h2>
-      <p>Nota dan tiket dikirim langsung dari server ke printer. Pilih Nonaktif untuk memakai cetak lewat browser saja.</p>
-      <form className="settings-form" onSubmit={save}>
-        <label className="field-label">Metode koneksi
-          <select className="field-select" value={mode} onChange={(event) => setMode(event.target.value as PrinterFormMode)}>
-            <option value="off">Nonaktif (cetak lewat browser)</option>
-            <option value="network">Jaringan LAN (IP:port, umumnya 9100)</option>
-            <option value="serial">Port serial (Bluetooth Classic / COM / USB-serial)</option>
-            <option value="system">Printer terpasang di sistem (CUPS di macOS/Linux, antrian printer di Windows)</option>
-          </select>
-        </label>
-        {mode === "network" && (
-          <>
-            <label className="field-label">Alamat IP printer
-              <Input value={host} placeholder="192.168.1.50" maxLength={253} onChange={(event) => setHost(event.target.value)} />
-            </label>
-            <label className="field-label">Port
-              <Input type="number" min={1} max={65535} value={port} onChange={(event) => setPort(event.target.value)} />
-            </label>
-          </>
-        )}
-        {mode === "serial" && (
-          <>
-            <div className="serial-port-panel">
-              <div className="serial-port-heading">
-                <span>Port terdeteksi (diperbarui otomatis)</span>
-                <Badge className="inventory-safe">Live</Badge>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><Printer className="size-5 text-muted-foreground" /> Printer thermal (server)</CardTitle>
+        <CardDescription>Nota dan tiket dikirim langsung dari server ke printer. Pilih Nonaktif untuk memakai cetak lewat browser saja.</CardDescription>
+      </CardHeader>
+      <form onSubmit={save}>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label>Metode koneksi</Label>
+            <Select value={mode} onValueChange={(next) => setMode((next ?? "off") as PrinterFormMode)}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="off">Nonaktif (cetak lewat browser)</SelectItem>
+                <SelectItem value="network">Jaringan LAN (IP:port, umumnya 9100)</SelectItem>
+                <SelectItem value="serial">Port serial (Bluetooth Classic / COM / USB-serial)</SelectItem>
+                <SelectItem value="system">Printer terpasang di sistem (CUPS di macOS/Linux, antrian printer di Windows)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {mode === "network" && (
+            <>
+              <div className="flex flex-col gap-2">
+                <Label>Alamat IP printer</Label>
+                <Input value={host} placeholder="192.168.1.50" maxLength={253} onChange={(event) => setHost(event.target.value)} />
               </div>
-              {portScanError && <p className="serial-port-empty">{portScanError}</p>}
-              {!portScanError && serialPorts.length === 0 && (
-                <p className="serial-port-empty">Belum ada port. Pasangkan printer Bluetooth lewat Pengaturan Bluetooth Windows, lalu tunggu beberapa detik.</p>
-              )}
-              {serialPorts.map((port) => {
-                const isSaved = data.printer.mode === "serial" && data.printer.serialPath === port.path;
-                return (
-                  <div key={port.path} className={`serial-port-row${isSaved ? " is-saved" : ""}`}>
-                    <div className="serial-port-info">
-                      <strong>{port.path}</strong>
-                      <span>{port.manufacturer || "Perangkat serial"}</span>
+              <div className="flex flex-col gap-2">
+                <Label>Port</Label>
+                <Input type="number" min={1} max={65535} value={port} onChange={(event) => setPort(event.target.value)} />
+              </div>
+            </>
+          )}
+          {mode === "serial" && (
+            <>
+              <div className="flex flex-col gap-3 rounded-lg border p-3">
+                <div className="flex items-center justify-between gap-2 text-sm">
+                  <span className="font-medium">Port terdeteksi (diperbarui otomatis)</span>
+                  <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">Live</Badge>
+                </div>
+                {portScanError && <p className="text-sm text-destructive">{portScanError}</p>}
+                {!portScanError && serialPorts.length === 0 && (
+                  <p className="text-sm text-muted-foreground">Belum ada port. Pasangkan printer Bluetooth lewat Pengaturan Bluetooth Windows, lalu tunggu beberapa detik.</p>
+                )}
+                {serialPorts.map((port) => {
+                  const isSaved = data.printer.mode === "serial" && data.printer.serialPath === port.path;
+                  return (
+                    <div key={port.path} className={`flex flex-wrap items-center gap-3 rounded-md border p-3 ${isSaved ? "border-primary bg-primary/5" : ""}`}>
+                      <div className="flex min-w-0 flex-1 flex-col">
+                        <strong className="truncate font-medium">{port.path}</strong>
+                        <span className="text-sm text-muted-foreground">{port.manufacturer || "Perangkat serial"}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {port.isBluetooth && <Badge variant="secondary">Bluetooth</Badge>}
+                        {isSaved && <Badge>Tersimpan</Badge>}
+                      </div>
+                      <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => connectPort(port.path)}>
+                        Hubungkan &amp; simpan
+                      </Button>
                     </div>
-                    <div className="serial-port-badges">
-                      {port.isBluetooth && <Badge className="inventory-safe">Bluetooth</Badge>}
-                      {isSaved && <Badge className="inventory-safe">Tersimpan</Badge>}
-                    </div>
-                    <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => connectPort(port.path)}>
-                      Hubungkan &amp; simpan
-                    </Button>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label>Port serial (isi manual jika tidak terdeteksi)</Label>
+                <Input value={serialPath} placeholder="COM3 atau /dev/cu.NAMA-PRINTER" maxLength={255} onChange={(event) => setSerialPath(event.target.value)} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label>Baud rate</Label>
+                <Select value={baudRate} onValueChange={(next) => setBaudRate(next ?? baudRate)}>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {PRINTER_BAUD_RATES.map((rate) => (
+                      <SelectItem key={rate} value={String(rate)}>{rate}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
+          {mode === "system" && (
+            <div className="flex flex-col gap-2">
+              <Label>Nama printer di sistem</Label>
+              <Input value={systemName} placeholder="EPSON_TM_T82" maxLength={100} onChange={(event) => setSystemName(event.target.value)} />
             </div>
-            <label className="field-label">Port serial (isi manual jika tidak terdeteksi)
-              <Input value={serialPath} placeholder="COM3 atau /dev/cu.NAMA-PRINTER" maxLength={255} onChange={(event) => setSerialPath(event.target.value)} />
-            </label>
-            <label className="field-label">Baud rate
-              <select className="field-select" value={baudRate} onChange={(event) => setBaudRate(event.target.value)}>
-                {PRINTER_BAUD_RATES.map((rate) => (
-                  <option key={rate} value={rate}>{rate}</option>
-                ))}
-              </select>
-            </label>
-          </>
-        )}
-        {mode === "system" && (
-          <label className="field-label">Nama printer di sistem
-            <Input value={systemName} placeholder="EPSON_TM_T82" maxLength={100} onChange={(event) => setSystemName(event.target.value)} />
-          </label>
-        )}
-        {mode !== "off" && (
-          <label className="drawer-toggle">
-            <input type="checkbox" checked={drawerAutoOpen} onChange={(event) => setDrawerAutoOpen(event.target.checked)} />
-            <span>Buka laci otomatis setiap pembayaran tunai (laci terhubung ke printer lewat kabel RJ11)</span>
-          </label>
-        )}
-        <div className="print-actions">
+          )}
+          {mode !== "off" && (
+            <div className="flex items-start gap-2">
+              <Checkbox id="drawer-auto-open" checked={drawerAutoOpen} onCheckedChange={(checked) => setDrawerAutoOpen(checked === true)} />
+              <Label htmlFor="drawer-auto-open" className="font-normal leading-snug">
+                Buka laci otomatis setiap pembayaran tunai (laci terhubung ke printer lewat kabel RJ11)
+              </Label>
+            </div>
+          )}
+        </CardContent>
+        <CardFooter className="flex flex-wrap gap-2">
           <Button type="button" variant="outline" onClick={() => openCashDrawer(runAction)} disabled={pending || data.printer.mode === "off"}>Buka laci sekarang</Button>
           <Button type="button" variant="outline" onClick={testPrint} disabled={pending || mode === "off"}>Tes cetak</Button>
-          <Button type="submit" className="settings-save" disabled={pending}>Simpan printer <ArrowRight size={15} /></Button>
-        </div>
+          <Button type="submit" disabled={pending}>Simpan printer <ArrowRight data-icon="inline-end" /></Button>
+        </CardFooter>
       </form>
     </Card>
   );
@@ -2741,18 +3150,25 @@ function TaxReceiptCard({ data, pending, runAction }: { data: PosBootstrap; pend
   }
 
   return (
-    <Card className="panel settings-card">
-      <div className="settings-card-icon"><Wallet size={20} /></div>
-      <h2>Pajak & catatan struk</h2>
-      <p>Pajak dihitung otomatis di kasir. Catatan kaki tampil di bagian bawah nota.</p>
-      <form className="settings-form" onSubmit={save}>
-        <label className="field-label">Pajak (%)
-          <Input type="number" min={0} max={30} step="0.01" value={taxPercent} onChange={(event) => setTaxPercent(event.target.value)} />
-        </label>
-        <label className="field-label">Catatan kaki struk
-          <Input value={footer} maxLength={120} onChange={(event) => setFooter(event.target.value)} />
-        </label>
-        <Button type="submit" className="settings-save" disabled={pending}>Simpan pajak & catatan <ArrowRight size={15} /></Button>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><Wallet className="size-5 text-muted-foreground" /> Pajak & catatan struk</CardTitle>
+        <CardDescription>Pajak dihitung otomatis di kasir. Catatan kaki tampil di bagian bawah nota.</CardDescription>
+      </CardHeader>
+      <form onSubmit={save}>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label>Pajak (%)</Label>
+            <Input type="number" min={0} max={30} step="0.01" value={taxPercent} onChange={(event) => setTaxPercent(event.target.value)} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label>Catatan kaki struk</Label>
+            <Input value={footer} maxLength={120} onChange={(event) => setFooter(event.target.value)} />
+          </div>
+        </CardContent>
+        <CardFooter>
+          <Button type="submit" disabled={pending}>Simpan pajak & catatan <ArrowRight data-icon="inline-end" /></Button>
+        </CardFooter>
       </form>
     </Card>
   );
@@ -2826,49 +3242,64 @@ function ProductForm({
   }
 
   return (
-    <form className="adjustment-form product-form" onSubmit={submit}>
-      <div className="form-grid">
-        <label className="field-label">Nama menu
+    <form className="flex flex-col gap-6" onSubmit={submit}>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="flex flex-col gap-2">
+          <Label>Nama menu</Label>
           <Input value={name} maxLength={60} onChange={(event) => setName(event.target.value)} placeholder="Contoh: Es Kopi Susu" />
-        </label>
-        <label className="field-label">Kategori
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label>Kategori</Label>
           <Input value={category} maxLength={40} onChange={(event) => setCategory(event.target.value)} placeholder="Contoh: Kopi, Makanan" />
-        </label>
-        <label className="field-label">Harga jual (Rp)
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label>Harga jual (Rp)</Label>
           <Input type="number" min={1000} value={price} onChange={(event) => setPrice(event.target.value)} />
-        </label>
-        <label className="field-label">Stasiun produksi
-          <select className="field-select" value={station} onChange={(event) => setStation(event.target.value as "Kitchen" | "Barista")}>
-            <option value="Barista">Barista · minuman</option>
-            <option value="Kitchen">Kitchen · makanan</option>
-          </select>
-        </label>
-        <label className="field-label">Ikon (emoji)
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label>Stasiun produksi</Label>
+          <Select value={station} onValueChange={(next) => setStation((next ?? "Barista") as "Kitchen" | "Barista")}>
+            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Barista">Barista · minuman</SelectItem>
+              <SelectItem value="Kitchen">Kitchen · makanan</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label>Ikon (emoji)</Label>
           <Input value={icon} maxLength={8} onChange={(event) => setIcon(event.target.value)} placeholder="☕" />
-        </label>
-        <label className="field-label">Catatan singkat
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label>Catatan singkat</Label>
           <Input value={note} maxLength={60} onChange={(event) => setNote(event.target.value)} placeholder="Opsional" />
-        </label>
-        <label className="field-label full-span">Modifier (pisahkan dengan koma)
+        </div>
+        <div className="flex flex-col gap-2 sm:col-span-2">
+          <Label>Modifier (pisahkan dengan koma)</Label>
           <Input value={modifiers} onChange={(event) => setModifiers(event.target.value)} placeholder="Less sugar, Extra shot" />
-        </label>
+        </div>
       </div>
-      <div className="recipe-editor">
-        <span className="settings-subtitle">Resep per porsi</span>
+      <div className="flex flex-col gap-3 rounded-lg border p-4">
+        <span className="font-medium">Resep per porsi</span>
         {recipe.map((line, index) => (
-          <div className="recipe-line" key={index}>
-            <select
-              className="field-select"
-              aria-label="Bahan resep"
-              value={line.ingredientId}
-              onChange={(event) => updateLine(index, { ingredientId: event.target.value })}
-            >
-              <option value="" disabled>Pilih bahan</option>
-              {data.ingredients.map((ingredient) => (
-                <option value={ingredient.id} key={ingredient.id}>{ingredient.name} ({ingredient.unit})</option>
-              ))}
-            </select>
+          <div className="flex items-center gap-2" key={index}>
+            <Select value={line.ingredientId} onValueChange={(next) => updateLine(index, { ingredientId: next ?? "" })}>
+              <SelectTrigger className="min-w-0 flex-1" aria-label="Bahan resep">
+                <SelectValue>
+                  {(value: string) => {
+                    const ingredient = data.ingredients.find((item) => item.id === value);
+                    return ingredient ? `${ingredient.name} (${ingredient.unit})` : "Pilih bahan";
+                  }}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {data.ingredients.map((ingredient) => (
+                  <SelectItem value={ingredient.id} key={ingredient.id}>{ingredient.name} ({ingredient.unit})</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Input
+              className="w-28"
               type="number"
               step="any"
               min={0}
@@ -2877,20 +3308,21 @@ function ProductForm({
               value={line.amount}
               onChange={(event) => updateLine(index, { amount: event.target.value })}
             />
-            <button
+            <Button
               type="button"
-              className="small-action"
+              variant="ghost"
+              size="icon"
               aria-label="Hapus baris resep"
               disabled={recipe.length === 1}
               onClick={() => setRecipe((lines) => lines.filter((_, lineIndex) => lineIndex !== index))}
-            ><X size={14} /></button>
+            ><X /></Button>
           </div>
         ))}
-        <Button type="button" variant="outline" size="sm" disabled={recipe.length >= 20} onClick={() => setRecipe((lines) => [...lines, { ingredientId: "", amount: "" }])}>
-          <Plus size={14} /> Tambah bahan
+        <Button type="button" variant="outline" size="sm" className="w-fit" disabled={recipe.length >= 20} onClick={() => setRecipe((lines) => [...lines, { ingredientId: "", amount: "" }])}>
+          <Plus data-icon="inline-start" /> Tambah bahan
         </Button>
       </div>
-      <Button type="submit" className="full-button" disabled={pending}><Check size={16} /> Simpan menu</Button>
+      <Button type="submit" className="w-full" disabled={pending}><Check data-icon="inline-start" /> Simpan menu</Button>
     </form>
   );
 }
@@ -2929,22 +3361,26 @@ function IngredientForm({
   }
 
   return (
-    <form className="adjustment-form" onSubmit={submit}>
-      <label className="field-label">Nama bahan
+    <form className="flex flex-col gap-6" onSubmit={submit}>
+      <div className="flex flex-col gap-2">
+        <Label>Nama bahan</Label>
         <Input value={name} maxLength={60} onChange={(event) => setName(event.target.value)} placeholder="Contoh: Susu full cream" />
-      </label>
-      <label className="field-label">Satuan
-        <Input value={unit} maxLength={12} onChange={(event) => setUnit(event.target.value)} placeholder="Contoh: ml, gram, pcs" />
-      </label>
-      <div className="form-grid">
-        <label className="field-label">Stok awal
-          <Input type="number" min={0} step="any" value={initialStock} onChange={(event) => setInitialStock(event.target.value)} />
-        </label>
-        <label className="field-label">Batas minimum
-          <Input type="number" min={0} step="any" value={minimum} onChange={(event) => setMinimum(event.target.value)} />
-        </label>
       </div>
-      <Button type="submit" className="full-button" disabled={pending}><Plus size={16} /> Tambah bahan</Button>
+      <div className="flex flex-col gap-2">
+        <Label>Satuan</Label>
+        <Input value={unit} maxLength={12} onChange={(event) => setUnit(event.target.value)} placeholder="Contoh: ml, gram, pcs" />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="flex flex-col gap-2">
+          <Label>Stok awal</Label>
+          <Input type="number" min={0} step="any" value={initialStock} onChange={(event) => setInitialStock(event.target.value)} />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label>Batas minimum</Label>
+          <Input type="number" min={0} step="any" value={minimum} onChange={(event) => setMinimum(event.target.value)} />
+        </div>
+      </div>
+      <Button type="submit" className="w-full" disabled={pending}><Plus data-icon="inline-start" /> Tambah bahan</Button>
     </form>
   );
 }
@@ -3036,7 +3472,7 @@ function TableLayoutEditor({ tables, shapes, pending, runAction }: {
   }
 
   return (
-    <div className="table-editor">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
       <TableMap
         tables={tables}
         shapes={shapes}
@@ -3049,26 +3485,25 @@ function TableLayoutEditor({ tables, shapes, pending, runAction }: {
         onChangeShape={changeShape}
         className="table-map-admin"
       />
-      <div className="table-editor-side">
-        <form className="table-add-form" onSubmit={addTable}>
-          <label className="field-label">Tambah meja
-            <div className="inline-field">
-              <Input
-                value={newName}
-                maxLength={32}
-                placeholder="Contoh: Meja 11 atau VIP 1"
-                onChange={(event) => setNewName(event.target.value)}
-              />
-              <Button type="submit" disabled={pending || !trimmedNewName}><Plus size={15} /> Tambah</Button>
-            </div>
-          </label>
+      <div className="flex flex-col gap-4">
+        <form className="flex flex-col gap-2" onSubmit={addTable}>
+          <Label>Tambah meja</Label>
+          <div className="flex gap-2">
+            <Input
+              value={newName}
+              maxLength={32}
+              placeholder="Contoh: Meja 11 atau VIP 1"
+              onChange={(event) => setNewName(event.target.value)}
+            />
+            <Button type="submit" disabled={pending || !trimmedNewName}><Plus data-icon="inline-start" /> Tambah</Button>
+          </div>
         </form>
-        <div className="shape-toolbar">
-          <span className="shape-toolbar-label">Tambah area ke denah</span>
-          <div className="shape-toolbar-buttons">
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-medium">Tambah area ke denah</span>
+          <div className="flex flex-wrap gap-2">
             {shapeKindOptions.map(({ kind, label, icon: Icon }) => (
               <Button key={kind} type="button" size="sm" variant="outline" disabled={pending} onClick={() => addShape(kind)}>
-                <Icon size={15} /> {label}
+                <Icon data-icon="inline-start" /> {label}
               </Button>
             ))}
           </div>
@@ -3082,27 +3517,28 @@ function TableLayoutEditor({ tables, shapes, pending, runAction }: {
             onDeleted={() => setSelection(null)}
           />
         ) : selected ? (
-          <div className="table-detail">
-            <div className="table-detail-heading">
-              <strong>{selected.name}</strong>
-              <span className={`table-state ${selected.occupied ? "is-occupied" : "is-free"}`}>
-                {selected.occupied ? "Terisi" : "Kosong"}
-              </span>
-            </div>
-            {selected.occupied && (
-              <p className="table-picker-hint">
-                Meja terisi tidak bisa diganti nama atau dihapus. Pesanan terbuka: {selected.openOrderNumber}.
-              </p>
-            )}
-            <label className="field-label">Nama meja
+          <Card size="sm">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between gap-2">
+                <span>{selected.name}</span>
+                <Badge variant={selected.occupied ? "destructive" : "secondary"}>{selected.occupied ? "Terisi" : "Kosong"}</Badge>
+              </CardTitle>
+              {selected.occupied && (
+                <CardDescription>
+                  Meja terisi tidak bisa diganti nama atau dihapus. Pesanan terbuka: {selected.openOrderNumber}.
+                </CardDescription>
+              )}
+            </CardHeader>
+            <CardContent className="flex flex-col gap-2">
+              <Label>Nama meja</Label>
               <Input
                 value={renameValue}
                 maxLength={32}
                 disabled={selected.occupied}
                 onChange={(event) => setRenameValue(event.target.value)}
               />
-            </label>
-            <div className="table-detail-actions">
+            </CardContent>
+            <CardFooter className="flex flex-wrap gap-2">
               <Button
                 type="button"
                 variant="outline"
@@ -3112,14 +3548,14 @@ function TableLayoutEditor({ tables, shapes, pending, runAction }: {
                 Simpan nama
               </Button>
               <Button type="button" variant="destructive" disabled={pending || selected.occupied} onClick={deleteTable}>
-                <Trash2 size={15} /> Hapus meja
+                <Trash2 data-icon="inline-start" /> Hapus meja
               </Button>
-            </div>
-          </div>
+            </CardFooter>
+          </Card>
         ) : (
-          <p className="table-picker-hint">Pilih meja atau area di peta. Geser meja untuk mengatur posisinya; pilih area lalu geser sudutnya untuk mengubah ukuran.</p>
+          <p className="text-sm text-muted-foreground">Pilih meja atau area di peta. Geser meja untuk mengatur posisinya; pilih area lalu geser sudutnya untuk mengubah ukuran.</p>
         )}
-        <p className="table-count">{tables.length} meja · {shapes.length} area di denah</p>
+        <p className="text-sm text-muted-foreground">{tables.length} meja · {shapes.length} area di denah</p>
       </div>
     </div>
   );
@@ -3155,37 +3591,44 @@ function ShapeInspector({ shape, pending, runAction, onDeleted }: {
   }
 
   return (
-    <div className="table-detail">
-      <div className="table-detail-heading">
-        <strong>{shapeKindLabels[shape.kind]}</strong>
-      </div>
-      <p className="table-picker-hint">Area hanya untuk gambaran denah dan tidak memengaruhi pesanan.</p>
-      <label className="field-label">Label (opsional)
-        <Input
-          value={label}
-          maxLength={32}
-          placeholder="Contoh: Area indoor"
-          onChange={(event) => setLabel(event.target.value)}
-        />
-      </label>
-      <div className="shape-size-grid">
-        <label className="field-label">Lebar
-          <Input type="number" min={2} max={100} step="any" value={width} onChange={(event) => setWidth(event.target.value)} />
-        </label>
-        <label className="field-label">Tinggi
-          <Input type="number" min={2} max={100} step="any" value={height} onChange={(event) => setHeight(event.target.value)} />
-        </label>
-      </div>
-      {!sizeValid && <p className="table-picker-hint">Lebar dan tinggi harus antara 2 dan 100.</p>}
-      <div className="table-detail-actions">
+    <Card size="sm">
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between gap-2">
+          <span>{shapeKindLabels[shape.kind]}</span>
+        </CardTitle>
+        <CardDescription>Area hanya untuk gambaran denah dan tidak memengaruhi pesanan.</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
+          <Label>Label (opsional)</Label>
+          <Input
+            value={label}
+            maxLength={32}
+            placeholder="Contoh: Area indoor"
+            onChange={(event) => setLabel(event.target.value)}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-2">
+            <Label>Lebar</Label>
+            <Input type="number" min={2} max={100} step="any" value={width} onChange={(event) => setWidth(event.target.value)} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label>Tinggi</Label>
+            <Input type="number" min={2} max={100} step="any" value={height} onChange={(event) => setHeight(event.target.value)} />
+          </div>
+        </div>
+        {!sizeValid && <p className="text-sm text-destructive">Lebar dan tinggi harus antara 2 dan 100.</p>}
+      </CardContent>
+      <CardFooter className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" disabled={pending || !sizeValid || !changed} onClick={saveShape}>
           Simpan area
         </Button>
         <Button type="button" variant="destructive" disabled={pending} onClick={deleteShape}>
-          <Trash2 size={15} /> Hapus area
+          <Trash2 data-icon="inline-start" /> Hapus area
         </Button>
-      </div>
-    </div>
+      </CardFooter>
+    </Card>
   );
 }
 
@@ -3237,30 +3680,30 @@ function SetupWizard({ data, pending, runAction }: { data: PosBootstrap; pending
   }
 
   return (
-    <div className="setup-shell">
+    <div className="mx-auto flex min-h-svh w-full max-w-3xl flex-col gap-6 p-6">
       <Toaster richColors position="top-right" />
-      <header className="setup-header">
-        <div className="brand-icon"><Coffee size={21} /></div>
-        <div><strong>Kopi Senja</strong><span>SETUP AWAL OUTLET</span></div>
+      <header className="flex items-center gap-3">
+        <div className="flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground"><Coffee className="size-5" /></div>
+        <div className="flex flex-col"><strong className="font-semibold">Kopi Senja</strong><span className="text-sm text-muted-foreground">SETUP AWAL OUTLET</span></div>
       </header>
-      <ol className="setup-steps">
+      <ol className="grid grid-cols-5 gap-2 text-sm">
         {setupSteps.map((label, index) => (
-          <li key={label} className={index === step ? "setup-step setup-step-active" : index < step ? "setup-step setup-step-done" : "setup-step"}>
-            <span>{index < step ? <Check size={14} /> : index + 1}</span>{label}
+          <li key={label} className={`flex flex-col items-center gap-1 text-center ${index === step ? "font-semibold text-primary" : index < step ? "text-foreground" : "text-muted-foreground"}`}>
+            <span className={`flex size-7 items-center justify-center rounded-full border text-xs ${index === step ? "border-primary bg-primary text-primary-foreground" : index < step ? "border-primary text-primary" : ""}`}>{index < step ? <Check className="size-4" /> : index + 1}</span>{label}
           </li>
         ))}
       </ol>
-      <Card className="panel setup-card">
+      <Card className="gap-6 p-6">
         {step === 0 && (
           <>
-            <div className="setup-step-heading">
-              <span className="eyebrow">LANGKAH 1 DARI 5</span>
-              <h1>Profil toko</h1>
-              <p>Nama, logo, pajak, dan struk tampil di sidebar, nota, dan tiket cetak.</p>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-medium tracking-widest text-primary">LANGKAH 1 DARI 5</span>
+              <h1 className="text-2xl font-semibold tracking-tight">Profil toko</h1>
+              <p className="text-muted-foreground">Nama, logo, pajak, dan struk tampil di sidebar, nota, dan tiket cetak.</p>
             </div>
-            <div className="settings-media-row">
-              <div className="logo-preview">
-                {data.outletLogoUrl ? <img src={data.outletLogoUrl} alt="Logo toko" /> : <Coffee size={22} />}
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted">
+                {data.outletLogoUrl ? <img className="size-full object-cover" src={data.outletLogoUrl} alt="Logo toko" /> : <Coffee className="size-6 text-muted-foreground" />}
               </div>
               <ImageUploadControls
                 hasImage={data.outletLogoUrl !== null}
@@ -3270,43 +3713,49 @@ function SetupWizard({ data, pending, runAction }: { data: PosBootstrap; pending
                 onRemove={() => runAction(() => requestJson("/api/settings/logo", "DELETE"), "Logo toko dihapus.")}
               />
             </div>
-            <form className="setup-form" onSubmit={saveProfile}>
-              <div className="form-grid">
-                <label className="field-label">Nama toko
+            <form className="flex flex-col gap-6" onSubmit={saveProfile}>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="flex flex-col gap-2">
+                  <Label>Nama toko</Label>
                   <Input value={storeName} maxLength={60} onChange={(event) => setStoreName(event.target.value)} />
-                </label>
-                <label className="field-label">Pajak (%)
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label>Pajak (%)</Label>
                   <Input type="number" min={0} max={30} step="0.01" value={taxPercent} onChange={(event) => setTaxPercent(event.target.value)} />
-                </label>
-                <label className="field-label">Lebar kertas struk
-                  <select className="field-select" value={width} onChange={(event) => setWidth(Number(event.target.value) as 58 | 80)}>
-                    <option value={58}>58 mm · compact</option>
-                    <option value={80}>80 mm · standar</option>
-                  </select>
-                </label>
-                <label className="field-label full-span">Catatan kaki struk
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label>Lebar kertas struk</Label>
+                  <Select value={String(width)} onValueChange={(next) => setWidth(Number(next ?? 80) as 58 | 80)}>
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="58">58 mm · compact</SelectItem>
+                      <SelectItem value="80">80 mm · standar</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-2 sm:col-span-2">
+                  <Label>Catatan kaki struk</Label>
                   <Input value={footer} maxLength={120} onChange={(event) => setFooter(event.target.value)} placeholder="Contoh: Terima kasih, sampai jumpa lagi!" />
-                </label>
+                </div>
               </div>
-              <div className="setup-actions">
-                <span />
-                <Button type="submit" disabled={pending || trimmedName.length < 3}>Simpan & lanjut <ArrowRight size={15} /></Button>
+              <div className="flex justify-end">
+                <Button type="submit" disabled={pending || trimmedName.length < 3}>Simpan & lanjut <ArrowRight data-icon="inline-end" /></Button>
               </div>
             </form>
           </>
         )}
         {step === 1 && (
           <>
-            <div className="setup-step-heading">
-              <span className="eyebrow">LANGKAH 2 DARI 5</span>
-              <h1>Bahan baku</h1>
-              <p>Bahan dipakai sebagai resep menu. Minimal tambahkan satu bahan sebelum lanjut.</p>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-medium tracking-widest text-primary">LANGKAH 2 DARI 5</span>
+              <h1 className="text-2xl font-semibold tracking-tight">Bahan baku</h1>
+              <p className="text-muted-foreground">Bahan dipakai sebagai resep menu. Minimal tambahkan satu bahan sebelum lanjut.</p>
             </div>
-            <div className="setup-list">
+            <div className="flex flex-col divide-y rounded-lg border">
               {data.ingredients.map((ingredient) => (
-                <div className="setup-list-row" key={ingredient.id}>
-                  <strong>{ingredient.name}</strong>
-                  <span>{ingredient.onHand} {ingredient.unit} · minimum {ingredient.minimum} {ingredient.unit}</span>
+                <div className="flex items-center justify-between gap-4 px-4 py-3" key={ingredient.id}>
+                  <strong className="font-medium">{ingredient.name}</strong>
+                  <span className="text-sm text-muted-foreground">{ingredient.onHand} {ingredient.unit} · minimum {ingredient.minimum} {ingredient.unit}</span>
                 </div>
               ))}
               {data.ingredients.length === 0 && <EmptyState text="Belum ada bahan baku." />}
@@ -3315,24 +3764,24 @@ function SetupWizard({ data, pending, runAction }: { data: PosBootstrap; pending
               pending={pending}
               onCreate={(input) => runAction(() => requestJson("/api/ingredients", "POST", input), "Bahan baku ditambahkan.")}
             />
-            <div className="setup-actions">
+            <div className="flex items-center justify-between gap-2">
               <Button type="button" variant="outline" onClick={() => setStep(0)}>Kembali</Button>
-              <Button type="button" onClick={() => setStep(2)} disabled={data.ingredients.length === 0}>Lanjut <ArrowRight size={15} /></Button>
+              <Button type="button" onClick={() => setStep(2)} disabled={data.ingredients.length === 0}>Lanjut <ArrowRight data-icon="inline-end" /></Button>
             </div>
           </>
         )}
         {step === 2 && (
           <>
-            <div className="setup-step-heading">
-              <span className="eyebrow">LANGKAH 3 DARI 5</span>
-              <h1>Menu</h1>
-              <p>Setiap menu wajib punya stasiun produksi dan resep bahan. Minimal satu menu aktif.</p>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-medium tracking-widest text-primary">LANGKAH 3 DARI 5</span>
+              <h1 className="text-2xl font-semibold tracking-tight">Menu</h1>
+              <p className="text-muted-foreground">Setiap menu wajib punya stasiun produksi dan resep bahan. Minimal satu menu aktif.</p>
             </div>
-            <div className="setup-list">
+            <div className="flex flex-col divide-y rounded-lg border">
               {data.products.map((product) => (
-                <div className="setup-list-row" key={product.id}>
-                  <strong>{product.icon} {product.name}</strong>
-                  <span>{money(product.price)} · {product.station}</span>
+                <div className="flex items-center justify-between gap-4 px-4 py-3" key={product.id}>
+                  <strong className="font-medium">{product.icon} {product.name}</strong>
+                  <span className="text-sm text-muted-foreground">{money(product.price)} · {product.station}</span>
                 </div>
               ))}
               {data.products.length === 0 && <EmptyState text="Belum ada menu." />}
@@ -3342,44 +3791,51 @@ function SetupWizard({ data, pending, runAction }: { data: PosBootstrap; pending
               pending={pending}
               onCreate={(input) => runAction(() => requestJson("/api/products", "POST", input), "Menu ditambahkan.")}
             />
-            <div className="setup-actions">
+            <div className="flex items-center justify-between gap-2">
               <Button type="button" variant="outline" onClick={() => setStep(1)}>Kembali</Button>
-              <Button type="button" onClick={() => setStep(3)} disabled={activeProducts === 0}>Lanjut <ArrowRight size={15} /></Button>
+              <Button type="button" onClick={() => setStep(3)} disabled={activeProducts === 0}>Lanjut <ArrowRight data-icon="inline-end" /></Button>
             </div>
           </>
         )}
         {step === 3 && (
           <>
-            <div className="setup-step-heading">
-              <span className="eyebrow">LANGKAH 4 DARI 5</span>
-              <h1>Denah meja</h1>
-              <p>Tambahkan meja dan letakkan sesuai posisi di outlet. Kasir memilih meja dari denah ini. Langkah ini bisa dilewati jika outlet hanya melayani takeaway.</p>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-medium tracking-widest text-primary">LANGKAH 4 DARI 5</span>
+              <h1 className="text-2xl font-semibold tracking-tight">Denah meja</h1>
+              <p className="text-muted-foreground">Tambahkan meja dan letakkan sesuai posisi di outlet. Kasir memilih meja dari denah ini. Langkah ini bisa dilewati jika outlet hanya melayani takeaway.</p>
             </div>
             <TableLayoutEditor tables={data.tables} shapes={data.mapShapes} pending={pending} runAction={runAction} />
-            <div className="setup-actions">
+            <div className="flex items-center justify-between gap-2">
               <Button type="button" variant="outline" onClick={() => setStep(2)}>Kembali</Button>
-              <Button type="button" onClick={() => setStep(4)}>Lanjut <ArrowRight size={15} /></Button>
+              <Button type="button" onClick={() => setStep(4)}>Lanjut <ArrowRight data-icon="inline-end" /></Button>
             </div>
           </>
         )}
         {step === 4 && (
           <>
-            <div className="setup-step-heading">
-              <span className="eyebrow">LANGKAH 5 DARI 5</span>
-              <h1>Selesai</h1>
-              <p>Data ini langsung dipakai di kasir, pesanan, dan inventory setelah setup selesai.</p>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-medium tracking-widest text-primary">LANGKAH 5 DARI 5</span>
+              <h1 className="text-2xl font-semibold tracking-tight">Selesai</h1>
+              <p className="text-muted-foreground">Data ini langsung dipakai di kasir, pesanan, dan inventory setelah setup selesai.</p>
             </div>
-            <div className="setup-summary">
-              <div><strong>{data.outletName}</strong><span>Nama toko</span></div>
-              <div><strong>{data.ingredients.length}</strong><span>Bahan baku</span></div>
-              <div><strong>{activeProducts}</strong><span>Menu aktif</span></div>
-              <div><strong>{data.taxRateBasisPoints / 100}%</strong><span>Pajak</span></div>
-              <div><strong>{data.tables.length}</strong><span>Meja</span></div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+              {[
+                { value: data.outletName, label: "Nama toko" },
+                { value: data.ingredients.length, label: "Bahan baku" },
+                { value: activeProducts, label: "Menu aktif" },
+                { value: `${data.taxRateBasisPoints / 100}%`, label: "Pajak" },
+                { value: data.tables.length, label: "Meja" },
+              ].map((item) => (
+                <div className="flex flex-col gap-1 rounded-lg border bg-muted/40 p-4" key={item.label}>
+                  <strong className="text-lg font-semibold">{item.value}</strong>
+                  <span className="text-sm text-muted-foreground">{item.label}</span>
+                </div>
+              ))}
             </div>
-            <div className="setup-actions">
+            <div className="flex items-center justify-between gap-2">
               <Button type="button" variant="outline" onClick={() => setStep(3)}>Kembali</Button>
               <Button type="button" onClick={finishSetup} disabled={pending || activeProducts === 0 || data.ingredients.length === 0}>
-                Selesai & buka aplikasi <ArrowRight size={15} />
+                Selesai & buka aplikasi <ArrowRight data-icon="inline-end" />
               </Button>
             </div>
           </>
@@ -3390,7 +3846,12 @@ function SetupWizard({ data, pending, runAction }: { data: PosBootstrap; pending
 }
 
 function EmptyState({ text }: { text: string }) {
-  return <div className="empty-state"><span><Coffee size={18} /></span>{text}</div>;
+  return (
+    <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+      <Coffee className="size-5" />
+      {text}
+    </div>
+  );
 }
 
 function PrintDialog({ order, data, onClose }: { order: Order; data: PosBootstrap; onClose: () => void }) {
@@ -3444,15 +3905,21 @@ function PrintDialog({ order, data, onClose }: { order: Order; data: PosBootstra
     </div>
   );
   return (
-    <div className="print-modal-backdrop" role="presentation" onMouseDown={(event) => {
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" role="presentation" onMouseDown={(event) => {
       if (event.target === event.currentTarget) onClose();
     }}>
-      <div className="print-modal" role="dialog" aria-modal="true" aria-labelledby="print-title">
-        <div className="print-modal-header">
-          <div><div className="print-modal-icon"><Printer size={19} /></div><div><h2 id="print-title">Dokumen transaksi</h2><p>Nota pelanggan dan tiket produksi</p></div></div>
-          <button className="close-plain" onClick={onClose} aria-label="Tutup"><X size={20} /></button>
+      <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border bg-background shadow-xl" role="dialog" aria-modal="true" aria-labelledby="print-title">
+        <div className="flex items-start justify-between gap-4 border-b p-5">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary"><Printer size={19} /></div>
+            <div>
+              <h2 id="print-title" className="text-lg font-semibold">Dokumen transaksi</h2>
+              <p className="text-sm text-muted-foreground">Nota pelanggan dan tiket produksi</p>
+            </div>
+          </div>
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Tutup"><X /></Button>
         </div>
-        <div className="print-documents">
+        <div className="print-documents flex-1 overflow-y-auto bg-muted/40 p-5">
           <div className={`receipt-paper ${receiptClass}`}>
             <ReceiptLogo src={data.outletLogoUrl} />
             <h3>{data.outletName}</h3>
@@ -3498,32 +3965,32 @@ function PrintDialog({ order, data, onClose }: { order: Order; data: PosBootstra
             </div>
           ))}
         </div>
-        <div className="print-bluetooth">
-          <span className="print-bluetooth-status" data-connected={bluetoothPrinter ? "true" : "false"}>
-            {bluetoothPrinter ? <BluetoothConnected size={16} /> : <Bluetooth size={16} />}
+        <div className="flex flex-col gap-3 border-t bg-muted/40 px-5 py-4">
+          <span className="flex items-center gap-2 text-sm" data-connected={bluetoothPrinter ? "true" : "false"}>
+            {bluetoothPrinter ? <BluetoothConnected size={16} className="text-primary" /> : <Bluetooth size={16} className="text-muted-foreground" />}
             {bluetoothPrinter ? `Terhubung ke ${bluetoothPrinter.name}` : bluetoothSupported ? "Printer thermal Bluetooth belum terhubung" : "Browser ini tidak mendukung Bluetooth (pakai Chrome atau Edge)"}
           </span>
           {bluetoothSupported && (bluetoothPrinter ? (
-            <div className="print-actions">
+            <div className="flex flex-wrap justify-end gap-2">
               <Button variant="outline" onClick={disconnectBrowserPrinter} disabled={sending}>Putuskan</Button>
-              <Button onClick={printOverBluetooth} disabled={sending}><Printer size={16} /> {sending ? "Mengirim..." : "Cetak ke Bluetooth"}</Button>
+              <Button onClick={printOverBluetooth} disabled={sending}><Printer data-icon="inline-start" /> {sending ? "Mengirim..." : "Cetak ke Bluetooth"}</Button>
             </div>
           ) : (
             <Button variant="outline" onClick={connectBluetooth} disabled={connecting || sending}>
-              <Bluetooth size={16} /> {connecting ? "Menghubungkan..." : "Connect ke printer thermal"}
+              <Bluetooth data-icon="inline-start" /> {connecting ? "Menghubungkan..." : "Connect ke printer thermal"}
             </Button>
           ))}
         </div>
-        <div className="print-modal-footer">
-          <p><Printer size={14} /> {serverPrintEnabled ? "Cetak ke printer thermal dikirim dari server. Cetak lewat browser tersedia sebagai cadangan." : "Satu aksi akan mencetak nota dan semua tiket stasiun."}</p>
-          <div className="print-actions">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t p-5">
+          <p className="flex items-center gap-2 text-sm text-muted-foreground"><Printer size={14} /> {serverPrintEnabled ? "Cetak ke printer thermal dikirim dari server. Cetak lewat browser tersedia sebagai cadangan." : "Satu aksi akan mencetak nota dan semua tiket stasiun."}</p>
+          <div className="flex flex-wrap justify-end gap-2">
             {serverPrintEnabled ? (
               <>
                 <Button variant="outline" onClick={() => window.print()} disabled={sending}>Cetak lewat browser</Button>
-                <Button onClick={printOnServer} disabled={sending}><Printer size={16} /> {sending ? "Mengirim..." : "Cetak ke printer"}</Button>
+                <Button onClick={printOnServer} disabled={sending}><Printer data-icon="inline-start" /> {sending ? "Mengirim..." : "Cetak ke printer"}</Button>
               </>
             ) : (
-              <Button onClick={() => window.print()}><Printer size={16} /> Cetak semua dokumen</Button>
+              <Button onClick={() => window.print()}><Printer data-icon="inline-start" /> Cetak semua dokumen</Button>
             )}
           </div>
         </div>

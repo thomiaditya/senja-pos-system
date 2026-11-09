@@ -49,38 +49,38 @@
 }
 
 :root {
-  --background: #f4f6f2;
-  --foreground: #25342e;
+  --background: #f8fafc;
+  --foreground: #0f172a;
   --card: #ffffff;
-  --card-foreground: #25342e;
+  --card-foreground: #0f172a;
   --popover: #ffffff;
-  --popover-foreground: #25342e;
-  --primary: #2f7258;
+  --popover-foreground: #0f172a;
+  --primary: #2563eb;
   --primary-foreground: #ffffff;
-  --secondary: #edf2ed;
-  --secondary-foreground: #34443a;
-  --muted: #f1f3f0;
-  --muted-foreground: #718078;
-  --accent: #e8f1eb;
-  --accent-foreground: #2f7258;
-  --destructive: #b94f45;
-  --border: #e4e9e3;
-  --input: #e0e6df;
-  --ring: #88ad96;
-  --chart-1: #2f7258;
-  --chart-2: #d29a4f;
-  --chart-3: #6875bc;
-  --chart-4: #60a477;
-  --chart-5: #bd6258;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #1e293b;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #eff6ff;
+  --accent-foreground: #1d4ed8;
+  --destructive: #dc2626;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #93c5fd;
+  --chart-1: #2563eb;
+  --chart-2: #0ea5e9;
+  --chart-3: #6366f1;
+  --chart-4: #14b8a6;
+  --chart-5: #f59e0b;
   --radius: 0.75rem;
   --sidebar: #ffffff;
-  --sidebar-foreground: #34443a;
-  --sidebar-primary: #2f7258;
+  --sidebar-foreground: #1e293b;
+  --sidebar-primary: #2563eb;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e8f1eb;
-  --sidebar-accent-foreground: #2f7258;
-  --sidebar-border: #edf0eb;
-  --sidebar-ring: #88ad96;
+  --sidebar-accent: #eff6ff;
+  --sidebar-accent-foreground: #1d4ed8;
+  --sidebar-border: #e2e8f0;
+  --sidebar-ring: #93c5fd;
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -2049,66 +2049,6 @@ button:disabled {
   font-size: 0.75rem;
 }
 
-.order-card {
-  padding: 11px;
-  border: 1px solid rgb(219 224 216 / 75%);
-  border-radius: 10px;
-  background: #fff;
-  box-shadow: 0 3px 10px rgb(50 60 48 / 3%);
-}
-
-.order-card-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 6px;
-}
-
-.order-card-top > div strong,
-.order-card-top > div span {
-  display: block;
-}
-
-.order-card-top > div strong {
-  color: #465349;
-  font-size: 0.75rem;
-}
-
-.order-card-top > div span {
-  margin-top: 4px;
-  color: #a0a8a0;
-  font-size: 0.75rem;
-}
-
-.order-card-badges {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 5px;
-}
-
-.order-card-top > div .order-customer {
-  display: block;
-  margin-top: 4px;
-  color: #3e4a40;
-  font-size: 0.875rem;
-  font-weight: 700;
-}
-
-.order-card-badges .queue-timer {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 0;
-  padding: 2px 8px;
-  border-radius: 999px;
-  color: #3e4a40;
-  background: rgb(255 255 255 / 85%);
-  font-size: 0.8125rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
 .order-card.order-card-warning {
   border-color: #eab308;
   background: #facc15;
@@ -2121,7 +2061,7 @@ button:disabled {
 }
 
 .order-card.order-card-alarm .order-card-top > div strong,
-.order-card.order-card-alarm .order-card-top > div span,
+.order-card.order-card-alarm .order-card-top > div span:not([data-slot="badge"]):not(.queue-timer),
 .order-card.order-card-alarm .order-card-top > div .order-customer,
 .order-card.order-card-alarm .order-card-meta {
   color: inherit;
