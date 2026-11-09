@@ -1,0 +1,357 @@
+<mxfile host="65bd71144e">
+    <diagram id="sales-flow" name="01 - Penjualan dan Produksi">
+        <mxGraphModel dx="1280" dy="1052" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1960" pageHeight="1980" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=22;fontStyle=1;fontColor=#17324D;" value="CAFE POS | ALUR PENJUALAN HINGGA PESANAN SELESAI" vertex="1">
+                    <mxGeometry height="42" width="1450" x="40" y="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="subtitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=13;fontColor=#526579;" value="MVP satu outlet | Pemesanan melalui kasir | Pembayaran wajib terkonfirmasi sebelum produksi" vertex="1">
+                    <mxGeometry height="28" width="1450" x="40" y="62" as="geometry"/>
+                </mxCell>
+                <mxCell id="lane-customer" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F4F8FC;strokeColor=#C7D6E5;arcSize=8;" value="" vertex="1">
+                    <mxGeometry height="1815" width="270" x="40" y="105" as="geometry"/>
+                </mxCell>
+                <mxCell id="lane-cashier" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#C7D6E5;arcSize=8;" value="" vertex="1">
+                    <mxGeometry height="1815" width="350" x="310" y="105" as="geometry"/>
+                </mxCell>
+                <mxCell id="lane-inventory" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2F8F5;strokeColor=#C7D6E5;arcSize=8;" value="" vertex="1">
+                    <mxGeometry height="1815" width="330" x="660" y="105" as="geometry"/>
+                </mxCell>
+                <mxCell id="lane-payment" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9EF;strokeColor=#C7D6E5;arcSize=8;" value="" vertex="1">
+                    <mxGeometry height="1815" width="330" x="990" y="105" as="geometry"/>
+                </mxCell>
+                <mxCell id="lane-production" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7F5FC;strokeColor=#C7D6E5;arcSize=8;" value="" vertex="1">
+                    <mxGeometry height="1815" width="370" x="1320" y="105" as="geometry"/>
+                </mxCell>
+                <mxCell id="lane-system" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F7F8;strokeColor=#C7D6E5;arcSize=8;" value="" vertex="1">
+                    <mxGeometry height="1815" width="270" x="1690" y="105" as="geometry"/>
+                </mxCell>
+                <mxCell id="head-customer" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DCEBFA;strokeColor=#8FB5D8;fontColor=#17324D;fontStyle=1;fontSize=14;" value="PELANGGAN" vertex="1">
+                    <mxGeometry height="42" width="250" x="50" y="115" as="geometry"/>
+                </mxCell>
+                <mxCell id="head-cashier" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E4EEF8;strokeColor=#8FB5D8;fontColor=#17324D;fontStyle=1;fontSize=14;" value="KASIR / POS" vertex="1">
+                    <mxGeometry height="42" width="330" x="320" y="115" as="geometry"/>
+                </mxCell>
+                <mxCell id="head-inventory" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DDEFE4;strokeColor=#8EB99B;fontColor=#17324D;fontStyle=1;fontSize=14;" value="INVENTORY" vertex="1">
+                    <mxGeometry height="42" width="310" x="670" y="115" as="geometry"/>
+                </mxCell>
+                <mxCell id="head-payment" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF0D5;strokeColor=#D9B66F;fontColor=#624B20;fontStyle=1;fontSize=14;" value="PEMBAYARAN" vertex="1">
+                    <mxGeometry height="42" width="310" x="1000" y="115" as="geometry"/>
+                </mxCell>
+                <mxCell id="head-production" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAE4F6;strokeColor=#AA98CF;fontColor=#443665;fontStyle=1;fontSize=14;" value="KDS / BARISTA / KITCHEN" vertex="1">
+                    <mxGeometry height="42" width="350" x="1330" y="115" as="geometry"/>
+                </mxCell>
+                <mxCell id="head-system" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8ECEF;strokeColor=#AEB8C0;fontColor=#344454;fontStyle=1;fontSize=14;" value="SISTEM / OWNER" vertex="1">
+                    <mxGeometry height="42" width="250" x="1700" y="115" as="geometry"/>
+                </mxCell>
+                <mxCell id="e1" edge="1" parent="1" source="start" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#526579;" target="browse">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e2" edge="1" parent="1" source="browse" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#526579;" target="create-order">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e3" edge="1" parent="1" source="create-order" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#526579;" target="order-type">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e4" edge="1" parent="1" source="order-type" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#526579;" target="add-items">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e5" edge="1" parent="1" source="add-items" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#526579;" target="calculate">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e6" edge="1" parent="1" source="calculate" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#526579;" target="confirm-order">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e7" edge="1" parent="1" source="confirm-order" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#526579;" target="stock-precheck">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e8" edge="1" parent="1" source="stock-precheck" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#526579;" target="stock-enough">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e9" edge="1" parent="1" source="stock-enough" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#C45A52;fontColor=#9B342D;fontSize=12;labelBackgroundColor=#FFFFFF;" target="out-of-stock" value="Tidak">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e10" edge="1" parent="1" source="stock-enough" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#448A60;fontColor=#347148;fontSize=12;labelBackgroundColor=#FFFFFF;" target="payment-method" value="Ya">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e11" edge="1" parent="1" source="out-of-stock" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#C45A52;" target="add-items">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e12" edge="1" parent="1" source="payment-method" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#526579;" target="payment-confirmed">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e13" edge="1" parent="1" source="payment-confirmed" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#C45A52;fontColor=#9B342D;fontSize=12;labelBackgroundColor=#FFFFFF;" target="payment-retry" value="Tidak / timeout">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e14" edge="1" parent="1" source="payment-retry" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#C45A52;" target="payment-method">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e15" edge="1" parent="1" source="payment-confirmed" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#448A60;fontColor=#347148;fontSize=12;labelBackgroundColor=#FFFFFF;" target="stock-recheck" value="Ya">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e16" edge="1" parent="1" source="stock-recheck" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#C45A52;fontColor=#9B342D;fontSize=12;labelBackgroundColor=#FFFFFF;" target="stock-race" value="Tidak">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e17" edge="1" parent="1" source="stock-recheck" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#448A60;fontColor=#347148;fontSize=12;labelBackgroundColor=#FFFFFF;" target="paid-reserved" value="Ya">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e18" edge="1" parent="1" source="paid-reserved" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#526579;" target="receipt">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e19" edge="1" parent="1" source="receipt" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#526579;" target="customer-receipt">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e20" edge="1" parent="1" source="paid-reserved" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#448A60;" target="kds-queue">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e21" edge="1" parent="1" source="kds-queue" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#526579;" target="route-fifo">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e22" edge="1" parent="1" source="route-fifo" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#526579;" target="prepare">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e23" edge="1" parent="1" source="prepare" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#526579;dashed=1;dashPattern=6 4;" target="stock-out">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e24" edge="1" parent="1" source="prepare" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#526579;" target="all-ready">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e25" edge="1" parent="1" source="all-ready" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#526579;fontSize=12;labelBackgroundColor=#FFFFFF;" target="prepare" value="Belum">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e26" edge="1" parent="1" source="all-ready" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#448A60;fontColor=#347148;fontSize=12;labelBackgroundColor=#FFFFFF;" target="handoff" value="Semua tiket Ready">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e27" edge="1" parent="1" source="handoff" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#526579;" target="complete">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e28" edge="1" parent="1" source="complete" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#526579;" target="reports">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="start" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#DFF2E5;strokeColor=#5B9B72;fontColor=#28563A;fontSize=14;fontStyle=1;" value="Mulai&lt;br&gt;Pelanggan datang" vertex="1">
+                    <mxGeometry height="64" width="180" x="85" y="180" as="geometry"/>
+                </mxCell>
+                <mxCell id="browse" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5B82A5;fontColor=#17324D;fontSize=14;spacing=8;" value="Pilih menu dan&lt;br&gt;tentukan kebutuhan" vertex="1">
+                    <mxGeometry height="76" width="220" x="65" y="300" as="geometry"/>
+                </mxCell>
+                <mxCell id="create-order" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5B82A5;fontColor=#17324D;fontSize=14;spacing=8;" value="Buat order baru&lt;br&gt;Buat nomor order unik" vertex="1">
+                    <mxGeometry height="70" width="260" x="355" y="300" as="geometry"/>
+                </mxCell>
+                <mxCell id="order-type" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5B82A5;fontColor=#17324D;fontSize=14;spacing=8;" value="Pilih Dine-in / Takeaway&lt;br&gt;Dine-in: pilih meja tersedia" vertex="1">
+                    <mxGeometry height="80" width="260" x="355" y="410" as="geometry"/>
+                </mxCell>
+                <mxCell id="add-items" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5B82A5;fontColor=#17324D;fontSize=14;spacing=8;" value="Tambah produk, kuantitas,&lt;br&gt;modifier, dan catatan" vertex="1">
+                    <mxGeometry height="82" width="260" x="355" y="530" as="geometry"/>
+                </mxCell>
+                <mxCell id="calculate" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5B82A5;fontColor=#17324D;fontSize=14;spacing=8;" value="Hitung subtotal, diskon, pajak,&lt;br&gt;total; simpan snapshot harga" vertex="1">
+                    <mxGeometry height="82" width="260" x="355" y="650" as="geometry"/>
+                </mxCell>
+                <mxCell id="confirm-order" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5B82A5;fontColor=#17324D;fontSize=14;spacing=8;" value="Kasir konfirmasi rincian&lt;br&gt;dan total ke pelanggan" vertex="1">
+                    <mxGeometry height="72" width="220" x="65" y="770" as="geometry"/>
+                </mxCell>
+                <mxCell id="stock-precheck" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF5ED;strokeColor=#69A77C;fontColor=#28563A;fontSize=14;spacing=8;" value="Cek produk aktif dan&lt;br&gt;kebutuhan stok sesuai resep" vertex="1">
+                    <mxGeometry height="74" width="260" x="695" y="770" as="geometry"/>
+                </mxCell>
+                <mxCell id="stock-enough" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF4D6;strokeColor=#D2A442;fontColor=#624B20;fontSize=14;" value="Stok bahan&lt;br&gt;mencukupi?" vertex="1">
+                    <mxGeometry height="104" width="180" x="735" y="880" as="geometry"/>
+                </mxCell>
+                <mxCell id="out-of-stock" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE9E7;strokeColor=#C45A52;fontColor=#7E302A;fontSize=13;spacing=7;" value="Tandai item tidak tersedia;&lt;br&gt;tawarkan substitusi / hapus item&lt;br&gt;Lalu hitung ulang total" vertex="1">
+                    <mxGeometry height="88" width="270" x="350" y="960" as="geometry"/>
+                </mxCell>
+                <mxCell id="payment-method" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8E9;strokeColor=#D2A442;fontColor=#624B20;fontSize=13;spacing=7;" value="Pilih Cash / QRIS / Debit-Kredit&lt;br&gt;Cash: input uang &amp; hitung kembalian&lt;br&gt;Non-tunai: simpan referensi" vertex="1">
+                    <mxGeometry height="90" width="280" x="1015" y="990" as="geometry"/>
+                </mxCell>
+                <mxCell id="payment-confirmed" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF4D6;strokeColor=#D2A442;fontColor=#624B20;fontSize=14;" value="Pembayaran&lt;br&gt;terkonfirmasi?" vertex="1">
+                    <mxGeometry height="106" width="180" x="1065" y="1110" as="geometry"/>
+                </mxCell>
+                <mxCell id="payment-retry" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE9E7;strokeColor=#C45A52;fontColor=#7E302A;fontSize=12;spacing=6;" value="Tetap unpaid; jangan kirim ke KDS.&lt;br&gt;Cek status terminal/provider sebelum retry;&lt;br&gt;gunakan request idempotency yang sama" vertex="1">
+                    <mxGeometry height="96" width="290" x="1010" y="1260" as="geometry"/>
+                </mxCell>
+                <mxCell id="stock-recheck" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF4D6;strokeColor=#D2A442;fontColor=#624B20;fontSize=13;" value="Stok masih cukup untuk&lt;br&gt;reservasi saat commit?" vertex="1">
+                    <mxGeometry height="106" width="180" x="735" y="1245" as="geometry"/>
+                </mxCell>
+                <mxCell id="paid-reserved" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DFF2E5;strokeColor=#5B9B72;fontColor=#28563A;fontSize=13;spacing=7;" value="Commit konsisten dan idempotent:&lt;br&gt;Payment = Paid + reserve resep&lt;br&gt;Simpan referensi &amp; audit" vertex="1">
+                    <mxGeometry height="88" width="270" x="690" y="1390" as="geometry"/>
+                </mxCell>
+                <mxCell id="stock-race" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE9E7;strokeColor=#C45A52;fontColor=#7E302A;fontSize=12;spacing=6;" value="Tahan dispatch ke KDS.&lt;br&gt;Eskalasi supervisor untuk substitusi&lt;br&gt;atau refund terkait pembayaran asal;&lt;br&gt;catat alasan dan audit" vertex="1">
+                    <mxGeometry height="100" width="270" x="690" y="1530" as="geometry"/>
+                </mxCell>
+                <mxCell id="receipt" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5B82A5;fontColor=#17324D;fontSize=13;spacing=7;" value="Terbitkan bukti transaksi&lt;br&gt;Nomor, item, total, metode bayar" vertex="1">
+                    <mxGeometry height="78" width="270" x="350" y="1410" as="geometry"/>
+                </mxCell>
+                <mxCell id="customer-receipt" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5B82A5;fontColor=#17324D;fontSize=13;spacing=7;" value="Terima bukti pembayaran" vertex="1">
+                    <mxGeometry height="62" width="220" x="65" y="1420" as="geometry"/>
+                </mxCell>
+                <mxCell id="kds-queue" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0EBFA;strokeColor=#8F7AB8;fontColor=#443665;fontSize=13;spacing=7;" value="Order Paid membuat tiket per stasiun&lt;br&gt;Nomor order induk, item, modifier, catatan" vertex="1">
+                    <mxGeometry height="78" width="260" x="1375" y="1410" as="geometry"/>
+                </mxCell>
+                <mxCell id="route-fifo" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0EBFA;strokeColor=#8F7AB8;fontColor=#443665;fontSize=13;spacing=7;" value="Kitchen: makanan | Barista: minuman&lt;br&gt;FIFO dan status dikelola per tiket" vertex="1">
+                    <mxGeometry height="78" width="260" x="1375" y="1530" as="geometry"/>
+                </mxCell>
+                <mxCell id="prepare" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0EBFA;strokeColor=#8F7AB8;fontColor=#443665;fontSize=13;spacing=7;" value="Kitchen / Barista memproses tiketnya&lt;br&gt;Preparing → Ready; nomor induk tetap sama" vertex="1">
+                    <mxGeometry height="78" width="260" x="1375" y="1650" as="geometry"/>
+                </mxCell>
+                <mxCell id="stock-out" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF5ED;strokeColor=#69A77C;fontColor=#28563A;fontSize=12;spacing=6;" value="Saat tiket mulai diproduksi:&lt;br&gt;hanya resep item tiket ini menjadi Stock Out;&lt;br&gt;reservasi tiket lain tetap" vertex="1">
+                    <mxGeometry height="78" width="270" x="690" y="1690" as="geometry"/>
+                </mxCell>
+                <mxCell id="all-ready" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF4D6;strokeColor=#D2A442;fontColor=#624B20;fontSize=14;" value="Semua tiket&lt;br&gt;stasiun Ready?" vertex="1">
+                    <mxGeometry height="104" width="180" x="1415" y="1770" as="geometry"/>
+                </mxCell>
+                <mxCell id="handoff" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5B82A5;fontColor=#17324D;fontSize=13;spacing=7;" value="Pelanggan mengambil pesanan di counter&lt;br&gt;setelah nomor dipanggil" vertex="1">
+                    <mxGeometry height="74" width="220" x="65" y="1780" as="geometry"/>
+                </mxCell>
+                <mxCell id="complete" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DFF2E5;strokeColor=#5B9B72;fontColor=#28563A;fontSize=13;spacing=7;" value="Kasir / staf konfirmasi pickup&lt;br&gt;Order: Completed" vertex="1">
+                    <mxGeometry height="68" width="270" x="350" y="1780" as="geometry"/>
+                </mxCell>
+                <mxCell id="reports" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8ECEF;strokeColor=#AEB8C0;fontColor=#344454;fontSize=13;spacing=7;" value="Data masuk ke histori,&lt;br&gt;laporan penjualan &amp; audit" vertex="1">
+                    <mxGeometry height="74" width="230" x="1710" y="1780" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="inventory-control" name="02 - Inventory dan Pengecualian">
+        <mxGraphModel dx="1840" dy="1513" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="1480" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="p2-title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=22;fontStyle=1;fontColor=#17324D;" value="CAFE POS | INVENTORY, PEMBATALAN, REFUND, DAN KONTROL" vertex="1">
+                    <mxGeometry height="42" width="1500" x="40" y="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2-subtitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=13;fontColor=#526579;" value="Siklus stok berbasis resep | Semua koreksi penting memerlukan alasan, pengguna berwenang, dan jejak audit" vertex="1">
+                    <mxGeometry height="28" width="1500" x="40" y="62" as="geometry"/>
+                </mxCell>
+                <mxCell id="setup-panel" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2F8F5;strokeColor=#B9D2C0;arcSize=8;" value="" vertex="1">
+                    <mxGeometry height="390" width="1820" x="40" y="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="order-panel" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F4F8FC;strokeColor=#C7D6E5;arcSize=8;" value="" vertex="1">
+                    <mxGeometry height="390" width="1820" x="40" y="520" as="geometry"/>
+                </mxCell>
+                <mxCell id="cancel-panel" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8F5;strokeColor=#E1B7A8;arcSize=8;" value="" vertex="1">
+                    <mxGeometry height="300" width="1820" x="40" y="930" as="geometry"/>
+                </mxCell>
+                <mxCell id="report-panel" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F7F8;strokeColor=#C7D0D6;arcSize=8;" value="" vertex="1">
+                    <mxGeometry height="180" width="1820" x="40" y="1250" as="geometry"/>
+                </mxCell>
+                <mxCell id="setup-head" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=15;fontStyle=1;fontColor=#28563A;" value="A. PERSIAPAN MENU DAN PENGELOLAAN STOK" vertex="1">
+                    <mxGeometry height="32" width="650" x="65" y="122" as="geometry"/>
+                </mxCell>
+                <mxCell id="order-head" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=15;fontStyle=1;fontColor=#17324D;" value="B. LIFECYCLE INVENTORY UNTUK SETIAP ORDER" vertex="1">
+                    <mxGeometry height="32" width="650" x="65" y="532" as="geometry"/>
+                </mxCell>
+                <mxCell id="cancel-head" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=15;fontStyle=1;fontColor=#7E302A;" value="C. PEMBATALAN / REFUND: KONTROL BERDASARKAN TAHAP PRODUKSI" vertex="1">
+                    <mxGeometry height="32" width="900" x="65" y="942" as="geometry"/>
+                </mxCell>
+                <mxCell id="report-head" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=15;fontStyle=1;fontColor=#344454;" value="D. VISIBILITAS OWNER / ADMIN" vertex="1">
+                    <mxGeometry height="30" width="500" x="65" y="1260" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2e1" edge="1" parent="1" source="configure-recipe" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#526579;" target="receive-stock">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2e2" edge="1" parent="1" source="receive-stock" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#526579;" target="stock-count">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2e3" edge="1" parent="1" source="stock-count" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#C45A52;fontColor=#9B342D;fontSize=12;labelBackgroundColor=#FFFFFF;" target="adjust-stock" value="Ada selisih">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2e4" edge="1" parent="1" source="stock-count" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#448A60;fontColor=#347148;fontSize=12;labelBackgroundColor=#FFFFFF;" target="min-level" value="Tidak ada selisih">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2e5" edge="1" parent="1" source="adjust-stock" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#526579;" target="min-level">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2e6" edge="1" parent="1" source="paid-event" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#448A60;" target="reserve-event">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2e7" edge="1" parent="1" source="reserve-event" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#526579;" target="cancel-before">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2e8" edge="1" parent="1" source="cancel-before" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#448A60;fontColor=#347148;fontSize=12;labelBackgroundColor=#FFFFFF;" target="production-start" value="Tidak">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2e9" edge="1" parent="1" source="cancel-before" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#C45A52;fontColor=#9B342D;fontSize=12;labelBackgroundColor=#FFFFFF;" target="cancel-prep" value="Ya">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2e10" edge="1" parent="1" source="cancel-after-decision" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#448A60;fontColor=#347148;fontSize=12;labelBackgroundColor=#FFFFFF;" target="stock-consume" value="Tidak">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2e11" edge="1" parent="1" source="stock-consume" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#526579;" target="production-finish">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2e12" edge="1" parent="1" source="cancel-after-decision" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#C45A52;fontColor=#9B342D;fontSize=12;labelBackgroundColor=#FFFFFF;" target="cancel-after" value="Ya">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2e13" edge="1" parent="1" source="cancel-prep" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#C45A52;" target="audit">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2e14" edge="1" parent="1" source="cancel-after" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#C45A52;" target="audit">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2e15" edge="1" parent="1" source="production-finish" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#526579;" target="audit">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2e16" edge="1" parent="1" source="audit" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#526579;" target="owner-reports">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2e17" edge="1" parent="1" source="min-level" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#526579;" target="owner-reports">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="p2e18" edge="1" parent="1" source="production-start" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#526579;" target="cancel-after-decision">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="configure-recipe" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#69A77C;fontColor=#28563A;fontSize=13;spacing=7;" value="Admin kelola menu, bahan,&lt;br&gt;satuan, resep, dan stasiun produksi&lt;br&gt;Contoh resep: Latte = kopi + susu" vertex="1">
+                    <mxGeometry height="92" width="275" x="70" y="190" as="geometry"/>
+                </mxCell>
+                <mxCell id="receive-stock" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#69A77C;fontColor=#28563A;fontSize=13;spacing=7;" value="Catat penerimaan bahan baku&lt;br&gt;Movement: Stock In&lt;br&gt;(pencatatan manual MVP)" vertex="1">
+                    <mxGeometry height="92" width="275" x="420" y="190" as="geometry"/>
+                </mxCell>
+                <mxCell id="stock-count" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF4D6;strokeColor=#D2A442;fontColor=#624B20;fontSize=13;" value="Stock opname:&lt;br&gt;stok fisik sesuai sistem?" vertex="1">
+                    <mxGeometry height="104" width="210" x="780" y="185" as="geometry"/>
+                </mxCell>
+                <mxCell id="adjust-stock" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE9E7;strokeColor=#C45A52;fontColor=#7E302A;fontSize=12;spacing=6;" value="Admin berwenang catat&lt;br&gt;Stock Adjustment + alasan&lt;br&gt;Simpan identitas &amp; audit" vertex="1">
+                    <mxGeometry height="92" width="280" x="1060" y="190" as="geometry"/>
+                </mxCell>
+                <mxCell id="min-level" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#69A77C;fontColor=#28563A;fontSize=13;spacing=7;" value="Pantau saldo &amp; batas minimum&lt;br&gt;Stok rendah: owner/admin tindak lanjut&lt;br&gt;Menu/bahan tidak tersedia: blokir jual" vertex="1">
+                    <mxGeometry height="92" width="330" x="1440" y="190" as="geometry"/>
+                </mxCell>
+                <mxCell id="paid-event" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DFF2E5;strokeColor=#5B9B72;fontColor=#28563A;fontSize=13;spacing=7;" value="Payment terkonfirmasi&lt;br&gt;dan stok lolos cek akhir" vertex="1">
+                    <mxGeometry height="72" width="230" x="90" y="610" as="geometry"/>
+                </mxCell>
+                <mxCell id="reserve-event" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF5ED;strokeColor=#69A77C;fontColor=#28563A;fontSize=13;spacing=7;" value="Reservasi kebutuhan per resep&lt;br&gt;Movement: Stock Reserved&lt;br&gt;Cegah stok negatif / double-use" vertex="1">
+                    <mxGeometry height="88" width="270" x="390" y="600" as="geometry"/>
+                </mxCell>
+                <mxCell id="cancel-before" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF4D6;strokeColor=#D2A442;fontColor=#624B20;fontSize=13;" value="Batal sebelum&lt;br&gt;ada tiket mulai?" vertex="1">
+                    <mxGeometry height="108" width="200" x="720" y="590" as="geometry"/>
+                </mxCell>
+                <mxCell id="production-start" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0EBFA;strokeColor=#8F7AB8;fontColor=#443665;fontSize=13;spacing=7;" value="Order induk tetap berjalan:&lt;br&gt;tiket Kitchen / Barista terpisah di KDS" vertex="1">
+                    <mxGeometry height="82" width="270" x="1000" y="600" as="geometry"/>
+                </mxCell>
+                <mxCell id="cancel-prep" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE9E7;strokeColor=#C45A52;fontColor=#7E302A;fontSize=12;spacing=6;" value="Otorisasi + alasan pembatalan&lt;br&gt;Release semua reservasi; refund&lt;br&gt;terkait payment asal; audit" vertex="1">
+                    <mxGeometry height="96" width="370" x="1400" y="590" as="geometry"/>
+                </mxCell>
+                <mxCell id="stock-consume" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF5ED;strokeColor=#69A77C;fontColor=#28563A;fontSize=13;spacing=7;" value="Saat satu tiket mulai produksi&lt;br&gt;hanya resep tiket itu menjadi Stock Out;&lt;br&gt;reservasi tiket lain tetap" vertex="1">
+                    <mxGeometry height="88" width="270" x="390" y="760" as="geometry"/>
+                </mxCell>
+                <mxCell id="production-finish" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0EBFA;strokeColor=#8F7AB8;fontColor=#443665;fontSize=13;spacing=7;" value="Tiket stasiun menjadi Ready;&lt;br&gt;order Ready for pickup jika semua tiket siap&lt;br&gt;Completed setelah pickup di counter" vertex="1">
+                    <mxGeometry height="82" width="270" x="740" y="760" as="geometry"/>
+                </mxCell>
+                <mxCell id="cancel-after-decision" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF4D6;strokeColor=#D2A442;fontColor=#624B20;fontSize=12;" value="Batal setelah ada&lt;br&gt;tiket mulai?" vertex="1">
+                    <mxGeometry height="108" width="190" x="1150" y="820" as="geometry"/>
+                </mxCell>
+                <mxCell id="cancel-after" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE9E7;strokeColor=#C45A52;fontColor=#7E302A;fontSize=12;spacing=6;" value="Otorisasi supervisor + alasan;&lt;br&gt;release reservasi tiket yang belum mulai;&lt;br&gt;bahan terpakai tidak dikembalikan;&lt;br&gt;catat waste / koreksi secara audit" vertex="1">
+                    <mxGeometry height="100" width="340" x="1060" y="1010" as="geometry"/>
+                </mxCell>
+                <mxCell id="audit" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#C45A52;fontColor=#7E302A;fontSize=12;spacing=6;" value="Update status order / payment terpisah&lt;br&gt;Refund ditautkan ke pembayaran asal&lt;br&gt;Catat pengguna, alasan, stok, waktu" vertex="1">
+                    <mxGeometry height="96" width="300" x="1460" y="1010" as="geometry"/>
+                </mxCell>
+                <mxCell id="owner-reports" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8ECEF;strokeColor=#AEB8C0;fontColor=#344454;fontSize=13;spacing=8;" value="Owner/Admin: laporan penjualan &amp; metode bayar | penggunaan bahan | stok masuk/keluar/penyesuaian | pembatalan/refund" vertex="1">
+                    <mxGeometry height="76" width="1580" x="160" y="1310" as="geometry"/>
+                </mxCell>
+                <mxCell id="status-note" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EEF3F8;strokeColor=#7B9BB9;fontColor=#17324D;fontSize=13;align=left;spacing=10;" value="PENTING: Payment status dan Order status adalah lifecycle terpisah. Paid: Queued → Preparing → Ready for pickup (semua tiket Ready) → Completed (pickup dikonfirmasi); Refunded + Cancelled. Order paid tidak boleh diedit langsung; koreksi harus terotorisasi dan tercatat." vertex="1">
+                    <mxGeometry height="58" width="1580" x="160" y="1400" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

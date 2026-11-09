@@ -1,0 +1,6 @@
+allowBuilds:
+  better-sqlite3: true
+  "@serialport/bindings-cpp": true
+  "@tailwindcss/oxide": true
+  sharp: false
+  unrs-resolver: false
