@@ -1,5 +1,6 @@
 import { ApiError } from "@/lib/api";
 import { getAssistantFunctionDeclarations, runAssistantTool } from "@/lib/assistant/tools";
+import { guidedTasks, type GuidedTask } from "@/lib/guided-tasks";
 import type { SessionUser } from "@/lib/types";
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -33,14 +34,39 @@ const ROLE_LABELS: Record<SessionUser["role"], string> = {
   kitchen: "Kitchen",
 };
 
+const SUGGEST_TASK_TOOL = "suggest_guided_task";
 const UNAVAILABLE_MESSAGE = "Asisten AI sedang tidak tersedia. Silakan coba lagi beberapa saat.";
 const BLOCKED_MESSAGE = "Maaf, pertanyaan ini tidak dapat saya jawab. Coba tanyakan dengan kalimat lain.";
 const EMPTY_MESSAGE = "Maaf, saya belum bisa menjawab pertanyaan itu. Coba tanyakan dengan kalimat lain.";
 const TOO_MANY_STEPS_MESSAGE = "Maaf, pertanyaan ini membutuhkan terlalu banyak langkah. Coba persempit pertanyaannya.";
 
-export type AssistantEvent = { type: "delta"; text: string };
+export type AssistantEvent = { type: "delta"; text: string } | { type: "task"; taskId: string };
+
+function guidedTasksFor(user: SessionUser) {
+  return guidedTasks.filter((task) => task.roles.includes(user.role));
+}
+
+function suggestTaskDeclaration(tasks: GuidedTask[]) {
+  return {
+    name: SUGGEST_TASK_TOOL,
+    description:
+      "Tampilkan tombol untuk memulai panduan langkah demi langkah di aplikasi. Panggil saat pengguna ingin dipandu atau bertanya apa yang harus dikerjakan.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        taskId: {
+          type: "STRING",
+          description: "ID panduan dari daftar yang tersedia.",
+          enum: tasks.map((task) => task.id),
+        },
+      },
+      required: ["taskId"],
+    },
+  };
+}
 
 function buildSystemInstruction(user: SessionUser) {
+  const tasks = guidedTasksFor(user);
   return [
     "Kamu adalah penasihat operasional restoran dan kedai kopi yang berpengalaman, untuk Kopi Senja. Kamu ahli di bidang operasional harian: alur shift, antrean pesanan, kecepatan layanan, manajemen meja, stok dan bahan baku, pengendalian biaya, pengelolaan kasir dan kas, serta pelatihan tim kasir, barista, kitchen, dan admin.",
     `Kamu sedang berbicara dengan ${user.name} yang login sebagai ${ROLE_LABELS[user.role]}.`,
@@ -52,6 +78,10 @@ function buildSystemInstruction(user: SessionUser) {
     "Jika data yang diminta tidak tersedia untuk role pengguna, jelaskan dengan sopan dan sarankan menghubungi admin.",
     "Tulis harga dalam format Rupiah dengan pemisah ribuan titik, misalnya Rp50.000.",
     "Jika pengguna bertanya cara memakai aplikasi, jelaskan langkahnya secara singkat.",
+    "Jika pengguna meminta dipandu, bertanya harus mulai dari mana, atau bertanya apa yang harus dikerjakan sekarang: (1) periksa kondisi toko yang relevan dengan tool, (2) pilih satu panduan yang paling tepat dari daftar di bawah, (3) WAJIB panggil suggest_guided_task dengan taskId tersebut sebelum menulis jawaban akhir. Sebutkan dalam teks singkat mengapa panduan itu yang paling tepat.",
+    "Jangan pernah menyebut tombol atau panduan 'di bawah' jika kamu belum memanggil suggest_guided_task.",
+    "Panduan yang tersedia untuk role ini:",
+    ...tasks.map((task) => `- ${task.id}: ${task.title}. ${task.summary}`),
   ].join("\n");
 }
 
@@ -141,11 +171,16 @@ export async function* streamAssistantReply(
   }
 
   const model = process.env.GEMINI_MODEL?.trim() || DEFAULT_MODEL;
-  const functionDeclarations = getAssistantFunctionDeclarations(user);
+  const tasks = guidedTasksFor(user);
+  const functionDeclarations = [
+    ...getAssistantFunctionDeclarations(user),
+    ...(tasks.length > 0 ? [suggestTaskDeclaration(tasks)] : []),
+  ];
   const contents: GeminiContent[] = messages.map((message) => ({
     role: message.role === "assistant" ? "model" : "user",
     parts: [{ text: message.content }],
   }));
+  let suggestedTask = false;
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
     const parts: GeminiPart[] = [];
@@ -176,7 +211,7 @@ export async function* streamAssistantReply(
 
     const calls = parts.flatMap((part) => (part.functionCall ? [part.functionCall] : []));
     if (calls.length === 0) {
-      if (!emitted) {
+      if (!emitted && !suggestedTask) {
         if (blocked) yield { type: "delta", text: BLOCKED_MESSAGE };
         else if (parts.length === 0) throw new ApiError(502, UNAVAILABLE_MESSAGE, "AI_UNAVAILABLE");
         else yield { type: "delta", text: EMPTY_MESSAGE };
@@ -185,11 +220,25 @@ export async function* streamAssistantReply(
     }
 
     contents.push({ role: "model", parts });
+    const responses: { name: string; response: Record<string, unknown> }[] = [];
+    for (const call of calls) {
+      if (call.name !== SUGGEST_TASK_TOOL) {
+        responses.push({ name: call.name, response: runAssistantTool(user, call.name) });
+        continue;
+      }
+      const taskId = String(call.args?.taskId ?? "");
+      const task = tasks.find((candidate) => candidate.id === taskId);
+      if (!task) {
+        responses.push({ name: call.name, response: { error: "Panduan tidak tersedia untuk role akun ini." } });
+        continue;
+      }
+      suggestedTask = true;
+      yield { type: "task", taskId: task.id };
+      responses.push({ name: call.name, response: { result: { ditampilkan: true } } });
+    }
     contents.push({
       role: "user",
-      parts: calls.map((call) => ({
-        functionResponse: { name: call.name, response: runAssistantTool(user, call.name) },
-      })),
+      parts: responses.map((response) => ({ functionResponse: response })),
     });
   }
 

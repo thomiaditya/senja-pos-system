@@ -3,21 +3,25 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { AlertCircle, LoaderCircle, Send, Sparkles } from "lucide-react";
+import { AlertCircle, Compass, LoaderCircle, Send, Sparkles } from "lucide-react";
+import { startGuidedTask } from "@/components/guided-tour";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { guidedTasks } from "@/lib/guided-tasks";
 import type { UserRole } from "@/lib/types";
 
-type ChatMessage = { role: "user" | "assistant"; content: string };
+type ChatMessage = { role: "user" | "assistant"; content: string; tasks?: string[] };
 
 type StreamLine =
   | { type: "delta"; text: string }
+  | { type: "task"; taskId: string }
   | { type: "done" }
   | { type: "error"; error: string; code?: string };
 
 const MAX_HISTORY = 12;
+const GUIDE_PROMPT = "Pandu saya, sebaiknya saya mulai dari mana sekarang?";
 
 const SUGGESTIONS: Record<UserRole, string[]> = {
   admin: [
@@ -45,7 +49,7 @@ const SUGGESTIONS: Record<UserRole, string[]> = {
 };
 
 function trimHistory(messages: ChatMessage[]) {
-  const history = messages.slice(-MAX_HISTORY);
+  const history = messages.slice(-MAX_HISTORY).map(({ role, content }) => ({ role, content }));
   while (history[0]?.role === "assistant") history.shift();
   return history;
 }
@@ -54,6 +58,13 @@ function appendToLastAssistant(messages: ChatMessage[], text: string) {
   const next = [...messages];
   const last = next.at(-1);
   if (last?.role === "assistant") next[next.length - 1] = { ...last, content: last.content + text };
+  return next;
+}
+
+function addTaskToLastAssistant(messages: ChatMessage[], taskId: string) {
+  const next = [...messages];
+  const last = next.at(-1);
+  if (last?.role === "assistant") next[next.length - 1] = { ...last, tasks: [...(last.tasks ?? []), taskId] };
   return next;
 }
 
@@ -91,6 +102,12 @@ export function AssistantChat({ role }: { role: UserRole }) {
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
   }, [messages, pending]);
+
+  function startTask(taskId: string) {
+    setOpen(false);
+    // Beri waktu sheet menutup agar overlay panduan tidak tertutup olehnya.
+    window.setTimeout(() => startGuidedTask(taskId), 200);
+  }
 
   async function send(text: string) {
     const content = text.trim();
@@ -133,6 +150,7 @@ export function AssistantChat({ role }: { role: UserRole }) {
           if (event.type === "error") throw new Error(event.error);
           if (event.type === "done") receivedDone = true;
           if (event.type === "delta") setMessages((current) => appendToLastAssistant(current, event.text));
+          if (event.type === "task") setMessages((current) => addTaskToLastAssistant(current, event.taskId));
         }
       }
       if (!receivedDone) throw new Error("Jawaban asisten terputus. Coba kirim ulang pertanyaan.");
@@ -142,7 +160,7 @@ export function AssistantChat({ role }: { role: UserRole }) {
       // Balon kosong dibuang jika jawaban gagal sebelum sempat tampil.
       setMessages((current) => {
         const last = current.at(-1);
-        return last?.role === "assistant" && !last.content ? current.slice(0, -1) : current;
+        return last?.role === "assistant" && !last.content && !last.tasks?.length ? current.slice(0, -1) : current;
       });
       setPending(false);
     }
@@ -172,6 +190,10 @@ export function AssistantChat({ role }: { role: UserRole }) {
             <div className="flex flex-col gap-2">
               <p className="text-sm text-muted-foreground">Coba salah satu pertanyaan ini:</p>
               <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="default" size="sm" onClick={() => void send(GUIDE_PROMPT)}>
+                  <Compass data-icon="inline-start" />
+                  Pandu saya
+                </Button>
                 {SUGGESTIONS[role].map((suggestion) => (
                   <Button key={suggestion} type="button" variant="outline" size="sm" onClick={() => void send(suggestion)}>
                     {suggestion}
@@ -182,23 +204,36 @@ export function AssistantChat({ role }: { role: UserRole }) {
           )}
 
           {messages.map((message, index) => {
-            if (message.role === "assistant" && !message.content) return null;
+            if (message.role === "assistant" && !message.content && !message.tasks?.length) return null;
+            const tasks = (message.tasks ?? []).flatMap((taskId) => {
+              const task = guidedTasks.find((candidate) => candidate.id === taskId);
+              return task ? [task] : [];
+            });
             return (
-              <div
-                key={index}
-                className={
-                  message.role === "user"
-                    ? "ml-auto max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-4 py-2.5 text-sm break-words whitespace-pre-wrap text-primary-foreground"
-                    : "mr-auto max-w-[85%] rounded-2xl rounded-bl-sm bg-muted px-4 py-2.5 text-sm break-words"
-                }
-              >
-                {message.role === "user" ? (
-                  message.content
-                ) : (
-                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                    {message.content}
-                  </ReactMarkdown>
+              <div key={index} className={message.role === "user" ? "ml-auto flex max-w-[85%] flex-col items-end gap-2" : "mr-auto flex max-w-[85%] flex-col items-start gap-2"}>
+                {(message.role === "user" || message.content) && (
+                  <div
+                    className={
+                      message.role === "user"
+                        ? "rounded-2xl rounded-br-sm bg-primary px-4 py-2.5 text-sm break-words whitespace-pre-wrap text-primary-foreground"
+                        : "rounded-2xl rounded-bl-sm bg-muted px-4 py-2.5 text-sm break-words"
+                    }
+                  >
+                    {message.role === "user" ? (
+                      message.content
+                    ) : (
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                        {message.content}
+                      </ReactMarkdown>
+                    )}
+                  </div>
                 )}
+                {tasks.map((task) => (
+                  <Button key={task.id} type="button" variant="outline" size="sm" onClick={() => startTask(task.id)}>
+                    <Compass data-icon="inline-start" />
+                    Mulai panduan: {task.title}
+                  </Button>
+                ))}
               </div>
             );
           })}
