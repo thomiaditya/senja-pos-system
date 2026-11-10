@@ -120,6 +120,7 @@ import type {
   Order,
   OrderItem,
   OpenTabSummary,
+  PendingCancelRequest,
   PosBootstrap,
   Product,
   Receivable,
@@ -142,7 +143,8 @@ type CartItem = {
 type OrderAction =
   | { action: "start" | "ready"; station: "Kitchen" | "Barista" }
   | { action: "pickup" }
-  | { action: "cancel"; reason: string };
+  | { action: "cancel"; reason: string }
+  | { action: "request_cancel"; reason: string };
 type ApiResult<T> = T & { error?: string };
 type NewProductInput = {
   name: string;
@@ -341,9 +343,27 @@ export function PosApp({
   async function orderAction(orderId: string, action: OrderAction) {
     const response = await perform(
       async () => requestJson<{ order: Order }>(`/api/orders/${orderId}/action`, "POST", action),
-      action.action === "pickup" ? "Pickup pesanan diselesaikan." : "Status pesanan diperbarui.",
+      action.action === "pickup"
+        ? "Pickup pesanan diselesaikan."
+        : action.action === "request_cancel"
+          ? "Pengajuan pembatalan dikirim ke SPV."
+          : "Status pesanan diperbarui.",
     );
     return response?.order ?? null;
+  }
+
+  async function requestCancel(order: Order) {
+    const reason = window.prompt(`Alasan pengajuan pembatalan ${order.orderNumber} ke SPV:`);
+    if (!reason?.trim()) return;
+    await orderAction(order.id, { action: "request_cancel", reason: reason.trim() });
+  }
+
+  async function decideCancelRequest(requestId: string, decision: "approve" | "reject") {
+    if (decision === "approve" && !window.confirm("Setujui pembatalan ini? Pembayaran pesanan akan direfund otomatis.")) return;
+    await perform(
+      async () => requestJson(`/api/cancel-requests/${requestId}`, "PATCH", { action: decision }),
+      decision === "approve" ? "Pesanan dibatalkan sesuai pengajuan kasir." : "Pengajuan pembatalan ditolak.",
+    );
   }
 
   async function saveProduct(productId: number, patch: { price?: number; active?: boolean; station?: "Kitchen" | "Barista" }) {
@@ -524,6 +544,9 @@ export function PosApp({
                 if (!reason?.trim()) return;
                 await orderAction(order.id, { action: "cancel", reason: reason.trim() });
               }}
+              onRequestCancel={requestCancel}
+              onDecideCancelRequest={decideCancelRequest}
+              onRefreshRequests={() => perform(refresh, "Daftar pengajuan diperbarui.", false)}
               onPrint={setPrintOrder}
             />
           )}
@@ -1214,6 +1237,7 @@ function Cashier({
           tab={selectedTab}
           tableName={selectedTable.name}
           isAdmin={data.user.role === "admin"}
+          isCashier={data.user.role === "cashier"}
           receivables={data.receivables}
           kasbonLimit={data.kasbonLimit}
           cashShiftOpen={data.cashShift !== null}
@@ -1290,6 +1314,7 @@ function TabCloseDialog({
   tab,
   tableName,
   isAdmin,
+  isCashier,
   receivables,
   kasbonLimit,
   cashShiftOpen,
@@ -1299,6 +1324,7 @@ function TabCloseDialog({
   tab: OpenTabSummary;
   tableName: string;
   isAdmin: boolean;
+  isCashier: boolean;
   receivables: Receivable[];
   kasbonLimit: number;
   cashShiftOpen: boolean;
@@ -1353,6 +1379,22 @@ function TabCloseDialog({
       await onChanged();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Batch tidak berhasil dibatalkan.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function requestBatchCancel(order: Order) {
+    const reason = window.prompt(`Alasan pengajuan pembatalan ${order.orderNumber} ke SPV:`);
+    if (!reason?.trim()) return;
+    setBusy(true);
+    try {
+      await requestJson(`/api/orders/${order.id}/action`, "POST", { action: "request_cancel", reason: reason.trim() }, () => router.replace("/login"));
+      toast.success(`Pengajuan pembatalan ${order.orderNumber} dikirim ke SPV.`);
+      setReloadKey((key) => key + 1);
+      await onChanged();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Pengajuan pembatalan tidak berhasil dikirim.");
     } finally {
       setBusy(false);
     }
@@ -1421,6 +1463,14 @@ function TabCloseDialog({
                       <Button type="button" variant="ghost" size="sm" className="self-start text-destructive" disabled={busy} onClick={() => cancelBatch(order)}>
                         Batalkan batch
                       </Button>
+                    )}
+                    {isCashier && !cancelled && order.status !== "Completed" && !order.cancelRequest && (
+                      <Button type="button" variant="ghost" size="sm" className="self-start" disabled={busy} onClick={() => requestBatchCancel(order)}>
+                        Ajukan pembatalan ke SPV
+                      </Button>
+                    )}
+                    {order.cancelRequest && !cancelled && (
+                      <span className="text-sm text-amber-700">Menunggu persetujuan SPV</span>
                     )}
                   </div>
                 );
@@ -1833,6 +1883,9 @@ function OrdersBoard({
   station,
   onAction,
   onCancel,
+  onRequestCancel,
+  onDecideCancelRequest,
+  onRefreshRequests,
   onPrint,
 }: {
   data: PosBootstrap;
@@ -1840,6 +1893,9 @@ function OrdersBoard({
   station?: StationSlug;
   onAction: (id: string, action: OrderAction) => Promise<Order | null>;
   onCancel: (order: Order) => void;
+  onRequestCancel: (order: Order) => void;
+  onDecideCancelRequest: (requestId: string, decision: "approve" | "reject") => Promise<void>;
+  onRefreshRequests: () => void;
   onPrint: (order: Order) => void;
 }) {
   const stationRole = data.user.role === "barista" ? "Barista" : data.user.role === "kitchen" ? "Kitchen" : null;
@@ -1848,6 +1904,7 @@ function OrdersBoard({
   const canPrint = data.user.role === "admin" || data.user.role === "cashier";
   const canPickup = canPrint;
   const canCancel = data.user.role === "admin";
+  const canRequestCancel = data.user.role === "cashier";
   const boardTone = filter === "Barista" ? "station-board-barista" : filter === "Kitchen" ? "station-board-kitchen" : "";
   const hasTimedOrders = visibleOrders.some((order) => isQueueTimedStatus(order.status));
   const now = useQueueClock(hasTimedOrders);
@@ -1920,6 +1977,14 @@ function OrdersBoard({
           <AlertDescription>Ada pesanan yang menunggu lebih dari 10 menit. Aktifkan suara alarm agar peringatan berbunyi.</AlertDescription>
         </Alert>
       )}
+      {data.user.role === "admin" && (
+        <CancelRequestQueue
+          requests={data.cancelRequests}
+          pending={pending}
+          onDecide={onDecideCancelRequest}
+          onRefresh={onRefreshRequests}
+        />
+      )}
       <div className="grid gap-2 xl:grid-cols-5" data-tour="orders-board">
         {columns.map((column) => {
           const columnOrders = visibleOrders.filter((order) => order.status === column.status);
@@ -1939,9 +2004,11 @@ function OrdersBoard({
                     canPickup={canPickup}
                     canPrint={canPrint}
                     canCancel={canCancel}
+                    canRequestCancel={canRequestCancel}
                     now={now}
                     onAction={onAction}
                     onCancel={onCancel}
+                    onRequestCancel={onRequestCancel}
                     onPrint={onPrint}
                   />
                 ))}
@@ -1952,6 +2019,52 @@ function OrdersBoard({
         })}
       </div>
     </div>
+  );
+}
+
+function CancelRequestQueue({
+  requests,
+  pending,
+  onDecide,
+  onRefresh,
+}: {
+  requests: PendingCancelRequest[];
+  pending: boolean;
+  onDecide: (requestId: string, decision: "approve" | "reject") => Promise<void>;
+  onRefresh: () => void;
+}) {
+  return (
+    <section className="flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4" aria-label="Pengajuan pembatalan dari kasir">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="flex items-center gap-2 text-base font-semibold">
+          <AlertTriangle className="size-4" /> Pengajuan pembatalan dari kasir
+          <Badge variant="secondary" className="tabular-nums">{requests.length}</Badge>
+        </h2>
+        <Button type="button" variant="outline" size="sm" disabled={pending} onClick={onRefresh}>Muat ulang</Button>
+      </div>
+      {requests.length === 0 && <p className="text-sm text-muted-foreground">Tidak ada pengajuan yang menunggu.</p>}
+      <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+        {requests.map((request) => (
+          <article key={request.id} className="flex flex-col gap-2 rounded-lg border bg-card p-4 text-sm">
+            <div className="flex items-center justify-between gap-2">
+              <strong className="font-semibold">{request.orderNumber}</strong>
+              <span className="tabular-nums">{money(request.total)}</span>
+            </div>
+            <span className="text-muted-foreground">
+              {request.orderType === "Dine-in" ? "Dine-in" : "Takeaway"}
+              {request.table ? ` · ${request.table}` : ""}
+              {request.customerName ? ` · ${request.customerName}` : ""}
+            </span>
+            <span>Alasan: {request.reason}</span>
+            <span className="text-xs text-muted-foreground">Diajukan {request.requestedByName} · {dateTime(request.requestedAt)}</span>
+            <div className="mt-auto flex gap-2 pt-1">
+              <Button type="button" size="sm" variant="destructive" disabled={pending} onClick={() => onDecide(request.id, "approve")}>Setujui pembatalan</Button>
+              <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => onDecide(request.id, "reject")}>Tolak</Button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -1972,9 +2085,11 @@ function OrderCard({
   canPickup,
   canPrint,
   canCancel,
+  canRequestCancel,
   now,
   onAction,
   onCancel,
+  onRequestCancel,
   onPrint,
 }: {
   order: Order;
@@ -1983,9 +2098,11 @@ function OrderCard({
   canPickup: boolean;
   canPrint: boolean;
   canCancel: boolean;
+  canRequestCancel: boolean;
   now: number | null;
   onAction: (id: string, action: OrderAction) => Promise<Order | null>;
   onCancel: (order: Order) => void;
+  onRequestCancel: (order: Order) => void;
   onPrint: (order: Order) => void;
 }) {
   const tickets = order.tickets.filter((ticket) => filter === "Semua" || ticket.station === filter);
@@ -2025,6 +2142,14 @@ function OrderCard({
         <Button disabled={pending} onClick={() => onAction(order.id, { action: "pickup" })}>
           <Check data-icon="inline-start" /> Selesaikan pickup
         </Button>
+      )}
+      {canRequestCancel && !["Completed", "Cancelled"].includes(order.status) && !order.cancelRequest && (
+        <Button variant="outline" size="sm" onClick={() => onRequestCancel(order)}>Ajukan pembatalan ke SPV</Button>
+      )}
+      {order.cancelRequest && !["Completed", "Cancelled"].includes(order.status) && (
+        <div className="flex items-start gap-1.5 rounded-md bg-amber-50 p-2 text-sm text-amber-800">
+          <Clock3 className="mt-0.5 size-3.5 shrink-0" /> Menunggu persetujuan SPV · {order.cancelRequest.reason}
+        </div>
       )}
       {canCancel && !["Completed", "Cancelled"].includes(order.status) && (
         <Button variant="destructive" size="sm" onClick={() => onCancel(order)}>Batalkan pesanan</Button>

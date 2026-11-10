@@ -106,6 +106,25 @@ export type OrderCredit = {
   outstanding: number;
 };
 
+export type OrderCancelRequest = {
+  reason: string;
+  requestedAt: string;
+};
+
+export type PendingCancelRequest = {
+  id: string;
+  orderId: string;
+  orderNumber: string;
+  orderType: Order["type"];
+  table: string | null;
+  customerName: string | null;
+  orderStatus: Order["status"];
+  total: number;
+  reason: string;
+  requestedByName: string;
+  requestedAt: string;
+};
+
 export type Order = {
   id: string;
   orderNumber: string;
@@ -130,6 +149,7 @@ export type Order = {
   total: number | null;
   note: string;
   cancelReason: string | null;
+  cancelRequest: OrderCancelRequest | null;
   collectedAt: string | null;
   items: OrderItem[];
   tickets: StationTicket[];
@@ -283,6 +303,7 @@ export type PosBootstrap = {
   kasbonLimit: number;
   receivables: Receivable[];
   orders: Order[];
+  cancelRequests: PendingCancelRequest[];
   movements: InventoryMovement[];
   accounts: ManagedAccount[];
   summary: PosSummary;

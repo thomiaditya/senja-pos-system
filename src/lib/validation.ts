@@ -61,6 +61,7 @@ export const orderActionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("ready"), station: z.enum(["Kitchen", "Barista"]) }),
   z.object({ action: z.literal("pickup") }),
   z.object({ action: z.literal("cancel"), reason: z.string().trim().min(3).max(160) }),
+  z.object({ action: z.literal("request_cancel"), reason: z.string().trim().min(3).max(160) }),
 ]);
 
 export const productUpdateSchema = z.object({
@@ -174,6 +175,10 @@ export const expenseFieldsSchema = z.object({
 });
 
 export const expenseDecisionSchema = z.object({
+  action: z.enum(["approve", "reject"]),
+});
+
+export const cancelRequestDecisionSchema = z.object({
   action: z.enum(["approve", "reject"]),
 });
 

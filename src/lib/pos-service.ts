@@ -20,8 +20,10 @@ import type {
   InventoryMovement,
   ManagedAccount,
   Order,
+  OrderCancelRequest,
   OrderCredit,
   OrderItem,
+  PendingCancelRequest,
   PosBootstrap,
   PosSummary,
   PrinterSettings,
@@ -38,6 +40,7 @@ import type {
 } from "@/lib/types";
 import {
   adminPasswordResetSchema,
+  cancelRequestDecisionSchema,
   createOrderSchema,
   creditPaymentSchema,
   discountCreateSchema,
@@ -92,6 +95,21 @@ type ShiftOpen = ReturnType<typeof shiftOpenSchema.parse>;
 type ShiftClose = ReturnType<typeof shiftCloseSchema.parse>;
 type ExpenseFields = ReturnType<typeof expenseFieldsSchema.parse>;
 type ExpenseDecision = ReturnType<typeof expenseDecisionSchema.parse>;
+type CancelRequestDecision = ReturnType<typeof cancelRequestDecisionSchema.parse>;
+
+type DbPendingCancelRequest = {
+  id: string;
+  order_id: string;
+  order_number: string;
+  order_type: Order["type"];
+  table_number: string | null;
+  customer_name: string | null;
+  order_status: Order["status"];
+  total: number;
+  reason: string;
+  requested_at: string;
+  requested_by_name: string;
+};
 
 type DbDiscount = {
   id: number;
@@ -130,6 +148,8 @@ type DbOrder = {
   credit_status: CreditStatus | null;
   credit_total: number | null;
   credit_paid: number | null;
+  cancel_request_reason: string | null;
+  cancel_request_at: string | null;
 };
 
 type TabRow = {
@@ -320,10 +340,12 @@ export function getOrders(user: SessionUser, orderId?: string, tabId?: string): 
       p.method, p.status AS payment_status, p.reference, p.cash_received, p.change_amount,
       c.status AS credit_status, c.total AS credit_total,
       COALESCE((SELECT SUM(CASE WHEN cp.kind = 'Cicilan' THEN cp.amount ELSE -cp.amount END)
-        FROM credit_payments cp WHERE cp.credit_id = c.id), 0) AS credit_paid
+        FROM credit_payments cp WHERE cp.credit_id = c.id), 0) AS credit_paid,
+      cr.reason AS cancel_request_reason, cr.requested_at AS cancel_request_at
     FROM orders o
     LEFT JOIN payments p ON p.order_id = o.id
     LEFT JOIN credit_accounts c ON c.order_id = o.id
+    LEFT JOIN order_cancel_requests cr ON cr.order_id = o.id AND cr.status = 'Pending'
     ${orderWhere}
     ORDER BY o.created_at DESC
     ${orderLimit}
@@ -421,6 +443,9 @@ export function getOrders(user: SessionUser, orderId?: string, tabId?: string): 
       total: stationRole ? null : row.total,
       note: row.note,
       cancelReason: row.cancel_reason,
+      cancelRequest: stationRole || row.cancel_request_reason === null || row.cancel_request_at === null
+        ? null
+        : { reason: row.cancel_request_reason, requestedAt: row.cancel_request_at } satisfies OrderCancelRequest,
       collectedAt: row.collected_at,
       items: (itemsByOrder.get(row.id) ?? [])
         .filter((item) => !stationRole || item.station === stationRole)
@@ -579,6 +604,7 @@ export function getPosBootstrap(user: SessionUser): PosBootstrap {
     kasbonLimit: getKasbonLimit(),
     receivables: canSell ? getReceivables() : [],
     orders: getOrders(user),
+    cancelRequests: isManager ? getPendingCancelRequests() : [],
     movements: isManager ? getMovements() : [],
     accounts: isManager ? getAccounts() : [],
     summary: getSummary(canSell),
@@ -1127,6 +1153,14 @@ function updateOrderProgress(orderId: string, actorId: string) {
   writeAudit(actorId, "order.progressed", "order", orderId, { status: nextStatus });
 }
 
+// A direct cancel or pickup supersedes any pending SPV request, so it is closed here to keep order cards and the queue in sync.
+function closePendingCancelRequests(orderId: string, actorId: string) {
+  db.prepare(`
+    UPDATE order_cancel_requests SET status = 'Rejected', decided_by = ?, decided_at = ?
+    WHERE order_id = ? AND status = 'Pending'
+  `).run(actorId, nowIso(), orderId);
+}
+
 export function performOrderAction(user: SessionUser, id: string, rawAction: unknown) {
   const action = orderActionSchema.parse(rawAction) as OrderAction;
   const transaction = db.transaction(() => {
@@ -1211,7 +1245,30 @@ export function performOrderAction(user: SessionUser, id: string, rawAction: unk
       if (result.changes !== 1) {
         throw new ApiError(409, "Pesanan baru dapat diselesaikan setelah semua tiket siap.", "ORDER_NOT_READY");
       }
+      closePendingCancelRequests(id, user.id);
       writeAudit(user.id, "order.collected", "order", id);
+      return;
+    }
+
+    if (action.action === "request_cancel") {
+      if (user.role !== "cashier") {
+        throw new ApiError(403, "Hanya kasir yang dapat mengajukan pembatalan ke SPV.", "FORBIDDEN");
+      }
+      if (order.status === "Completed" || order.status === "Cancelled") {
+        throw new ApiError(409, "Pesanan yang sudah ditutup tidak dapat diajukan pembatalan.", "ORDER_CLOSED");
+      }
+      const pending = db.prepare(`
+        SELECT id FROM order_cancel_requests WHERE order_id = ? AND status = 'Pending'
+      `).get(id);
+      if (pending) {
+        throw new ApiError(409, "Pengajuan pembatalan untuk pesanan ini sudah menunggu SPV.", "CANCEL_REQUEST_PENDING");
+      }
+      const requestId = randomUUID();
+      db.prepare(`
+        INSERT INTO order_cancel_requests (id, order_id, reason, status, requested_by, requested_at)
+        VALUES (?, ?, ?, 'Pending', ?, ?)
+      `).run(requestId, id, action.reason, user.id, nowIso());
+      writeAudit(user.id, "order.cancel_requested", "order", id, { reason: action.reason, requestId });
       return;
     }
 
@@ -1279,6 +1336,7 @@ export function performOrderAction(user: SessionUser, id: string, rawAction: unk
       WHERE order_id = ? AND status = 'Paid'
     `).run(nowIso(), refundReference, id);
     const creditRefunds = refundCreditOnCancel(user.id, id);
+    closePendingCancelRequests(id, user.id);
     writeAudit(user.id, "order.cancelled", "order", id, {
       reason: action.reason,
       refundReference,
@@ -2145,6 +2203,65 @@ export async function createExpense(user: SessionUser, formData: FormData) {
     await removeUpload("receipts", receiptFile);
     throw error;
   }
+}
+
+function getPendingCancelRequests(): PendingCancelRequest[] {
+  const rows = db.prepare(`
+    SELECT cr.id, cr.order_id, o.order_number, o.order_type, o.table_number, o.customer_name,
+      o.status AS order_status, o.total, cr.reason, cr.requested_at, u.name AS requested_by_name
+    FROM order_cancel_requests cr
+    JOIN orders o ON o.id = cr.order_id
+    JOIN users u ON u.id = cr.requested_by
+    WHERE cr.status = 'Pending' AND o.status NOT IN ('Cancelled', 'Completed')
+    ORDER BY cr.requested_at ASC
+  `).all() as DbPendingCancelRequest[];
+  return rows.map((row) => ({
+    id: row.id,
+    orderId: row.order_id,
+    orderNumber: row.order_number,
+    orderType: row.order_type,
+    table: row.table_number,
+    customerName: row.customer_name,
+    orderStatus: row.order_status,
+    total: row.total,
+    reason: row.reason,
+    requestedByName: row.requested_by_name,
+    requestedAt: row.requested_at,
+  }));
+}
+
+export function decideCancelRequest(user: SessionUser, requestId: string, rawInput: unknown) {
+  requireRole(user, ["admin"]);
+  const input = cancelRequestDecisionSchema.parse(rawInput) as CancelRequestDecision;
+  const transaction = db.transaction(() => {
+    const request = db.prepare(`
+      SELECT id, order_id, reason, status, requested_by FROM order_cancel_requests WHERE id = ?
+    `).get(requestId) as {
+      id: string;
+      order_id: string;
+      reason: string;
+      status: "Pending" | "Approved" | "Rejected";
+      requested_by: string;
+    } | undefined;
+    if (!request) throw new ApiError(404, "Pengajuan pembatalan tidak ditemukan.", "CANCEL_REQUEST_NOT_FOUND");
+    if (request.status !== "Pending") {
+      throw new ApiError(409, "Pengajuan pembatalan ini sudah diputuskan.", "CANCEL_REQUEST_NOT_PENDING");
+    }
+
+    const approved = input.action === "approve";
+    if (approved) {
+      performOrderAction(user, request.order_id, { action: "cancel", reason: request.reason });
+    }
+    db.prepare(`
+      UPDATE order_cancel_requests SET status = ?, decided_by = ?, decided_at = ? WHERE id = ?
+    `).run(approved ? "Approved" : "Rejected", user.id, nowIso(), request.id);
+    writeAudit(user.id, `order.cancel_request_${approved ? "approved" : "rejected"}`, "order", request.order_id, {
+      requestId: request.id,
+      requestedBy: request.requested_by,
+      reason: request.reason,
+    });
+  });
+  transaction();
 }
 
 export function decideExpense(user: SessionUser, expenseId: string, rawInput: unknown) {
