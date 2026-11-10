@@ -94,6 +94,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { TableMap, type MapSelection, type ShapeRect } from "@/components/table-map";
 import { GuidedTour, startGuidedTour } from "@/components/guided-tour";
+import { AssistantChat } from "@/components/assistant-chat";
 import {
   enableQueueAlarmSound,
   formatQueueElapsed,
@@ -487,6 +488,7 @@ export function PosApp({
             <span className="font-medium">{activeLabel}</span>
           </nav>
           <div className="ml-auto flex items-center gap-3 text-sm text-muted-foreground">
+            <AssistantChat role={user.role} />
             <Button type="button" variant="outline" size="sm" onClick={() => startGuidedTour()}>
               <Compass data-icon="inline-start" />
               Panduan

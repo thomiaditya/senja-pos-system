@@ -21,6 +21,8 @@ Untuk mencoba aplikasi dengan data contoh (9 menu, 10 bahan, 10 meja, 4 area den
 
 Untuk demo di Vercel, atur env `POS_DB_PATH=/tmp/kopi-senja/pos.sqlite`, `POS_SEED_DEMO=1`, `DEMO_PASSWORD`, dan `SESSION_SECRET`. Saat database kosong, aplikasi otomatis mengisi data contoh yang sama seperti `--demo`. Database di `/tmp` bersifat sementara dan dapat kembali kosong saat instance baru dibuat. Printer dan laci kasir (Bluetooth/serial) tidak berfungsi di Vercel.
 
+Tombol **Tanya AI** di header membuka asisten chat untuk semua role. Asisten memakai Gemini dan hanya membaca data (pesanan, meja, menu, penjualan, shift, stok, dan kasbon) sesuai role akun yang sedang login. Atur env `GEMINI_API_KEY` (wajib, hanya di server) dan opsional `GEMINI_MODEL` (default `gemini-3.8-flash`). Tanpa `GEMINI_API_KEY`, tombol tetap tampil tetapi asisten menampilkan pesan bahwa fitur belum dikonfigurasi. Pertanyaan dan ringkasan data dikirim ke Google Gemini API; pertimbangkan tier berbayar jika data pelanggan perlu dilindungi.
+
 Buka `http://localhost:3000` pada server. Perangkat kasir dan stasiun produksi dapat membuka `http://<IP-LAN-server>:3000` selama berada di jaringan lokal yang sama.
 
 ## Setup awal outlet

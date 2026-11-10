@@ -170,7 +170,7 @@ function outletDate(date = new Date()) {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
-function getProducts(): Product[] {
+export function getProducts(): Product[] {
   const rows = db.prepare(`
     SELECT p.id, p.name, p.category, p.price, p.icon, p.note, p.modifiers_json, p.station, p.active,
       CASE WHEN p.active = 1 AND NOT EXISTS (
@@ -244,7 +244,7 @@ function getDiscountForOrderOrThrow(discountId: number, subtotal: number): Disco
   return discount;
 }
 
-function getIngredients(): Ingredient[] {
+export function getIngredients(): Ingredient[] {
   return (db.prepare(`
     SELECT id, name, unit, on_hand, reserved, minimum
     FROM ingredients
@@ -286,7 +286,7 @@ function toOrderCredit(status: CreditStatus, total: number, paid: number): Order
   return { status, total, paid, outstanding };
 }
 
-function getOrders(user: SessionUser, orderId?: string): Order[] {
+export function getOrders(user: SessionUser, orderId?: string): Order[] {
   const orderWhere = orderId ? "WHERE o.id = ?" : "";
   const orderLimit = orderId ? "" : "LIMIT 100";
   const orderRows = db.prepare(`
@@ -440,7 +440,7 @@ function getMovements(): InventoryMovement[] {
   }));
 }
 
-function getSummary(includeBusinessMetrics: boolean): PosSummary {
+export function getSummary(includeBusinessMetrics: boolean): PosSummary {
   const active = db.prepare(`
     SELECT COUNT(*) AS count FROM orders
     WHERE status IN ('Queued', 'Preparing', 'Ready for pickup')
@@ -1235,7 +1235,7 @@ type DiningTableRow = {
   open_order_number: string | null;
 };
 
-function getDiningTables(): DiningTable[] {
+export function getDiningTables(): DiningTable[] {
   const rows = db.prepare(`
     SELECT t.id, t.name, t.x, t.y,
       (SELECT o.order_number FROM orders o
@@ -1561,7 +1561,7 @@ function getCustomerOutstanding(customerName: string) {
   `).get(customerName) as { outstanding: number }).outstanding;
 }
 
-function getReceivables(): Receivable[] {
+export function getReceivables(): Receivable[] {
   return (db.prepare(`
     SELECT o.id, o.order_number, o.created_at, c.customer_name, c.total,
       COALESCE((
@@ -1681,12 +1681,12 @@ function cashShiftFromRow(row: DbShift): CashShift {
   };
 }
 
-function getOpenCashShift(): CashShift | null {
+export function getOpenCashShift(): CashShift | null {
   const row = getOpenCashShiftRow();
   return row ? cashShiftFromRow(row) : null;
 }
 
-function getRecentCashShifts(limit: number): CashShift[] {
+export function getRecentCashShifts(limit: number): CashShift[] {
   const rows = db.prepare(`
     ${cashShiftSelect} WHERE s.closed_at IS NOT NULL ORDER BY s.closed_at DESC LIMIT ?
   `).all(limit) as DbShift[];
