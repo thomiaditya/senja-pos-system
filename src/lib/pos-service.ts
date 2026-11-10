@@ -581,7 +581,7 @@ export function getPosBootstrap(user: SessionUser): PosBootstrap {
     user,
     userAvatarUrl: avatarUrl(user.id, userAvatar?.avatar_file ?? null),
     setupCompleted: getSetting("setup_completed", "1") === "1",
-    outletName: getSetting("outlet_name", "Kopi Senja"),
+    outletName: getSetting("outlet_name", "Senja"),
     outletLogoUrl: logoFile ? `/api/media/logo?v=${encodeURIComponent(logoFile)}` : null,
     taxRateBasisPoints: Number(getSetting("tax_rate_basis_points", "1000")),
     receiptWidthMm: getSetting("receipt_width_mm", "80") === "58" ? 58 : 80,
@@ -2512,7 +2512,7 @@ function getReceiptPrintSettings() {
   const width: 58 | 80 = getSetting("receipt_width_mm", "80") === "58" ? 58 : 80;
   return {
     width,
-    outletName: getSetting("outlet_name", "Kopi Senja"),
+    outletName: getSetting("outlet_name", "Senja"),
     footer: getSetting("receipt_footer", "Terima kasih telah berkunjung!"),
   };
 }

@@ -37,7 +37,7 @@ export function seedDatabase(db, { withDemo = false, demoPassword } = {}) {
 
         const insertSetting = db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)");
         for (const [key, value] of [
-            ["outlet_name", "Toko Saya"],
+            ["outlet_name", "Senja"],
             ["tax_rate_basis_points", "1000"],
             ["receipt_width_mm", "80"],
             ["receipt_footer", "Terima kasih telah berkunjung!"],

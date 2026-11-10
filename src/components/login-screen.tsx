@@ -53,7 +53,7 @@ export function LoginScreen({ next }: { next: string | null }) {
           <p className="max-w-md text-primary-foreground/80">Kelola transaksi, produksi barista dan kitchen, serta stok bahan baku dengan alur yang sederhana.</p>
         </div>
         <div className="flex items-center gap-2 text-sm text-primary-foreground/80">
-          <span className="size-2 rounded-full bg-emerald-300" /> Outlet Kemang <span>•</span> Sistem lokal
+          <span className="size-2 rounded-full bg-emerald-300" /> Outlet Senja
         </div>
       </div>
 
@@ -66,7 +66,7 @@ export function LoginScreen({ next }: { next: string | null }) {
           <CardHeader className="gap-1 px-0">
             <span className="text-xs font-medium tracking-widest text-primary">SELAMAT DATANG KEMBALI</span>
             <CardTitle className="font-heading text-3xl font-normal tracking-tight">Masuk ke akun</CardTitle>
-            <CardDescription>Gunakan akun demo yang dibuat saat setup database.</CardDescription>
+            <CardDescription>Masukkan username dan password Anda untuk melanjutkan.</CardDescription>
           </CardHeader>
           <CardContent className="px-0">
             <form onSubmit={submit} className="flex flex-col gap-4">

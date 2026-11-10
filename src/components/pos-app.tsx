@@ -65,6 +65,7 @@ import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader,
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "cn";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { CancelReasonDialog, ConfirmDialog } from "@/components/action-dialogs";
 import { Input } from "@/components/ui/input";
 import { RupiahInput } from "@/components/rupiah-input";
 import { Label } from "@/components/ui/label";
@@ -94,6 +95,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { TableMap, type MapSelection, type ShapeRect } from "@/components/table-map";
 import { GuidedTour, startGuidedTour } from "@/components/guided-tour";
+import { TaskLauncher } from "@/components/task-launcher";
 import { AssistantChat } from "@/components/assistant-chat";
 import {
   enableQueueAlarmSound,
@@ -305,6 +307,8 @@ export function PosApp({
   const user = data.user;
   const [pending, setPending] = useState(false);
   const [printOrder, setPrintOrder] = useState<Order | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<{ order: Order; mode: "cancel" | "request" } | null>(null);
+  const [approvalRequestId, setApprovalRequestId] = useState<string | null>(null);
 
   async function refresh() {
     const updated = await requestJson<PosBootstrap>("/api/bootstrap", "GET", undefined, () => router.replace("/login"));
@@ -352,17 +356,21 @@ export function PosApp({
     return response?.order ?? null;
   }
 
-  async function requestCancel(order: Order) {
-    const reason = window.prompt(`Alasan pengajuan pembatalan ${order.orderNumber} ke SPV:`);
-    if (!reason?.trim()) return;
-    await orderAction(order.id, { action: "request_cancel", reason: reason.trim() });
-  }
-
   async function decideCancelRequest(requestId: string, decision: "approve" | "reject") {
-    if (decision === "approve" && !window.confirm("Setujui pembatalan ini? Pembayaran pesanan akan direfund otomatis.")) return;
+    if (decision === "approve") {
+      setApprovalRequestId(requestId);
+      return;
+    }
     await perform(
       async () => requestJson(`/api/cancel-requests/${requestId}`, "PATCH", { action: decision }),
-      decision === "approve" ? "Pesanan dibatalkan sesuai pengajuan kasir." : "Pengajuan pembatalan ditolak.",
+      "Pengajuan pembatalan ditolak.",
+    );
+  }
+
+  async function approveCancelRequest(requestId: string) {
+    await perform(
+      async () => requestJson(`/api/cancel-requests/${requestId}`, "PATCH", { action: "approve" }),
+      "Pesanan dibatalkan sesuai pengajuan kasir.",
     );
   }
 
@@ -516,15 +524,11 @@ export function PosApp({
               Panduan
             </Button>
             <span className="hidden md:inline">{new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long" }).format(new Date())}</span>
-            <Badge variant="outline" className="gap-1.5">
-              <span className="size-1.5 rounded-full bg-emerald-500" />
-              Lokal
-            </Badge>
           </div>
         </header>
 
         <main className="flex flex-1 flex-col gap-8 px-6 py-8 md:px-10 md:py-10">
-          {section === "dashboard" && <Dashboard data={data} onNavigate={(target) => router.push(appPath({ section: target }))} />}
+          {section === "dashboard" && <Dashboard data={data} role={user.role} onNavigate={(target) => router.push(appPath({ section: target }))} />}
           {section === "kasir" && (
             <Cashier
               data={data}
@@ -533,18 +537,15 @@ export function PosApp({
               onRefresh={refresh}
             />
           )}
+          {section === "pesanan" && <TaskLauncher role={user.role} />}
           {section === "pesanan" && (
             <OrdersBoard
               data={data}
               pending={pending}
               station={station}
               onAction={orderAction}
-              onCancel={async (order) => {
-                const reason = window.prompt(`Alasan pembatalan ${order.orderNumber}:`);
-                if (!reason?.trim()) return;
-                await orderAction(order.id, { action: "cancel", reason: reason.trim() });
-              }}
-              onRequestCancel={requestCancel}
+              onCancel={(order) => setCancelTarget({ order, mode: "cancel" })}
+              onRequestCancel={(order) => setCancelTarget({ order, mode: "request" })}
               onDecideCancelRequest={decideCancelRequest}
               onRefreshRequests={() => perform(refresh, "Daftar pengajuan diperbarui.", false)}
               onPrint={setPrintOrder}
@@ -583,11 +584,36 @@ export function PosApp({
           onClose={() => setPrintOrder(null)}
         />
       )}
+      {cancelTarget && (
+        <CancelReasonDialog
+          orderNumber={cancelTarget.order.orderNumber}
+          mode={cancelTarget.mode}
+          onClose={() => setCancelTarget(null)}
+          onSubmit={(reason) => {
+            const { order, mode } = cancelTarget;
+            setCancelTarget(null);
+            void orderAction(order.id, { action: mode === "request" ? "request_cancel" : "cancel", reason });
+          }}
+        />
+      )}
+      {approvalRequestId && (
+        <ConfirmDialog
+          title="Setujui pembatalan ini?"
+          description="Pesanan akan dibatalkan sesuai pengajuan kasir. Pembayaran pesanan akan direfund otomatis."
+          confirmLabel="Setujui pembatalan"
+          onClose={() => setApprovalRequestId(null)}
+          onConfirm={() => {
+            const requestId = approvalRequestId;
+            setApprovalRequestId(null);
+            void approveCancelRequest(requestId);
+          }}
+        />
+      )}
     </>
   );
 }
 
-function Dashboard({ data, onNavigate }: { data: PosBootstrap; onNavigate: (section: AppSection) => void }) {
+function Dashboard({ data, role, onNavigate }: { data: PosBootstrap; role: UserRole; onNavigate: (section: AppSection) => void }) {
   const summary = data.summary;
   const maxDaily = Math.max(1, ...summary.dailySales.map((sale) => sale.total));
   const recentOrders = data.orders.slice(0, 5);
@@ -610,6 +636,7 @@ function Dashboard({ data, onNavigate }: { data: PosBootstrap; onNavigate: (sect
         </div>
         <Coffee className="hidden size-14 shrink-0 text-primary-foreground/90 sm:block" strokeWidth={1.25} />
       </div>
+      <TaskLauncher role={role} />
       <div className="grid gap-2 sm:grid-cols-3" data-tour="dashboard-metrics">
         <MetricCard icon={Wallet} label="Penjualan hari ini" value={money(summary.todaySales)} note={`${summary.todayOrders} transaksi terbayar`} tone="bg-blue-100 text-blue-700" />
         <MetricCard icon={ClipboardList} label="Pesanan aktif" value={String(summary.activeOrders)} note="Menunggu atau sedang dibuat" tone="bg-sky-100 text-sky-700" />
@@ -1155,6 +1182,7 @@ function Cashier({
                     >
                       Tambah ke tab <Plus data-icon="inline-end" />
                     </Button>
+                    {cart.length === 0 && <p className="text-xs text-muted-foreground">Pilih menu dulu untuk ditambahkan ke tab.</p>}
                     <Button variant="outline" onClick={() => setTabCloseOpen(true)} disabled={tabSaving || pending}>
                       Lihat tab & bayar
                     </Button>
@@ -1171,21 +1199,30 @@ function Cashier({
                     {selectedTable.occupied ? (
                       <p className="text-xs text-muted-foreground">Meja sudah terisi pesanan biasa. Selesaikan dulu sebelum membuka tab.</p>
                     ) : (
-                      <p className="text-xs text-muted-foreground">Tab dibayar sekali saat ditutup. Nama pelanggan wajib diisi.</p>
+                      <p className="text-xs text-muted-foreground">
+                        {cart.length === 0 ? "Pilih menu dulu sebelum membuka tab." : "Tab dibayar sekali saat ditutup. Nama pelanggan wajib diisi."}
+                      </p>
                     )}
                   </div>
                 )}
               </div>
             )}
             {!selectedTab && (
-              <Button
-                size="lg"
-                data-tour="cashier-checkout"
-                disabled={saving || pending || cart.length === 0 || (orderType === "Dine-in" && !selectedTable)}
-                onClick={() => setCheckoutOpen(true)}
-              >
-                Lanjut ke pembayaran <ArrowRight data-icon="inline-end" />
-              </Button>
+              <div className="flex flex-col gap-2">
+                <Button
+                  size="lg"
+                  data-tour="cashier-checkout"
+                  disabled={saving || pending || cart.length === 0 || (orderType === "Dine-in" && !selectedTable)}
+                  onClick={() => setCheckoutOpen(true)}
+                >
+                  Lanjut ke pembayaran <ArrowRight data-icon="inline-end" />
+                </Button>
+                {cart.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Pilih menu dulu untuk memulai pesanan.</p>
+                ) : orderType === "Dine-in" && !selectedTable ? (
+                  <p className="text-xs text-muted-foreground">Pilih meja dulu untuk pesanan dine-in.</p>
+                ) : null}
+              </div>
             )}
           </div>
           </CardContent>
@@ -1292,10 +1329,14 @@ function OpenTabDialog({
               id="tab-customer"
               list={customerListId}
               value={customerName}
-              placeholder="Wajib diisi"
+              placeholder="Contoh: Budi"
               autoFocus
+              aria-describedby="tab-customer-hint"
               onChange={(event) => setCustomerName(event.target.value)}
             />
+            {trimmedCustomerName === "" && (
+              <p id="tab-customer-hint" className="text-xs text-muted-foreground">Isi nama pelanggan dulu agar tab bisa dibuka.</p>
+            )}
             <datalist id={customerListId}>
               {customers.map((customer) => <option key={customer.name} value={customer.name} />)}
             </datalist>
@@ -1336,6 +1377,7 @@ function TabCloseDialog({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [batchCancel, setBatchCancel] = useState<{ order: Order; mode: "cancel" | "request" } | null>(null);
   const [method, setMethod] = useState<PaymentMethod>("Cash");
   const [cashInput, setCashInput] = useState("");
   const total = detail?.total ?? tab.total;
@@ -1368,12 +1410,10 @@ function TabCloseDialog({
     };
   }, [tab.id, tab.total, tab.orderCount, reloadKey, router]);
 
-  async function cancelBatch(order: Order) {
-    const reason = window.prompt(`Alasan pembatalan ${order.orderNumber}:`);
-    if (!reason?.trim()) return;
+  async function cancelBatch(order: Order, reason: string) {
     setBusy(true);
     try {
-      await requestJson(`/api/orders/${order.id}/action`, "POST", { action: "cancel", reason: reason.trim() }, () => router.replace("/login"));
+      await requestJson(`/api/orders/${order.id}/action`, "POST", { action: "cancel", reason }, () => router.replace("/login"));
       toast.success(`${order.orderNumber} dibatalkan.`);
       setReloadKey((key) => key + 1);
       await onChanged();
@@ -1384,12 +1424,10 @@ function TabCloseDialog({
     }
   }
 
-  async function requestBatchCancel(order: Order) {
-    const reason = window.prompt(`Alasan pengajuan pembatalan ${order.orderNumber} ke SPV:`);
-    if (!reason?.trim()) return;
+  async function requestBatchCancel(order: Order, reason: string) {
     setBusy(true);
     try {
-      await requestJson(`/api/orders/${order.id}/action`, "POST", { action: "request_cancel", reason: reason.trim() }, () => router.replace("/login"));
+      await requestJson(`/api/orders/${order.id}/action`, "POST", { action: "request_cancel", reason }, () => router.replace("/login"));
       toast.success(`Pengajuan pembatalan ${order.orderNumber} dikirim ke SPV.`);
       setReloadKey((key) => key + 1);
       await onChanged();
@@ -1460,12 +1498,12 @@ function TabCloseDialog({
                       ))}
                     </ul>
                     {isAdmin && !cancelled && (
-                      <Button type="button" variant="ghost" size="sm" className="self-start text-destructive" disabled={busy} onClick={() => cancelBatch(order)}>
+                      <Button type="button" variant="ghost" size="sm" className="self-start text-destructive" disabled={busy} onClick={() => setBatchCancel({ order, mode: "cancel" })}>
                         Batalkan batch
                       </Button>
                     )}
                     {isCashier && !cancelled && order.status !== "Completed" && !order.cancelRequest && (
-                      <Button type="button" variant="ghost" size="sm" className="self-start" disabled={busy} onClick={() => requestBatchCancel(order)}>
+                      <Button type="button" variant="ghost" size="sm" className="self-start" disabled={busy} onClick={() => setBatchCancel({ order, mode: "request" })}>
                         Ajukan pembatalan ke SPV
                       </Button>
                     )}
@@ -1542,6 +1580,18 @@ function TabCloseDialog({
           </div>
         </div>
       </DialogContent>
+      {batchCancel && (
+        <CancelReasonDialog
+          orderNumber={batchCancel.order.orderNumber}
+          mode={batchCancel.mode}
+          onClose={() => setBatchCancel(null)}
+          onSubmit={(reason) => {
+            const { order, mode } = batchCancel;
+            setBatchCancel(null);
+            void (mode === "request" ? requestBatchCancel(order, reason) : cancelBatch(order, reason));
+          }}
+        />
+      )}
     </Dialog>
   );
 }

@@ -5,18 +5,16 @@ import { useRouter } from "next/navigation";
 import { driver, type Driver } from "driver.js";
 import "driver.js/dist/driver.css";
 import { appPath, type AppSection } from "@/lib/app-routes";
+import { guidedTasks, type GuidedStep } from "@/lib/guided-tasks";
 import type { UserRole } from "@/lib/types";
 
-type TourStep = {
-  section: AppSection;
-  roles: UserRole[];
-  target: string;
-  title: string;
-  description: string;
-};
+type TourStep = GuidedStep & { roles: UserRole[] };
 
-const TOUR_EVENT = "kopi-senja-tour-start";
-const STEP_KEY_PREFIX = "kopi-senja-tour-step:";
+type FlowState = { id: string; index: number };
+
+const FLOW_EVENT = "kopi-senja-flow-start";
+const FLOW_KEY = "kopi-senja-flow";
+const TOUR_FLOW_ID = "panduan-lengkap";
 
 const staff: UserRole[] = ["admin", "cashier"];
 const admin: UserRole[] = ["admin"];
@@ -45,30 +43,42 @@ const tourSteps: TourStep[] = [
   { section: "pengaturan", roles: admin, target: "settings-printer", title: "Printer thermal", description: "Hubungkan printer Bluetooth dari server, lalu simpan koneksinya." },
 ];
 
-function hrefFor(step: TourStep, role: UserRole) {
+function hrefFor(step: GuidedStep, role: UserRole) {
   if (step.section === "pesanan" && (role === "barista" || role === "kitchen")) return `/pesanan/${role}`;
   return appPath({ section: step.section });
 }
 
+function stepsFor(flowId: string, role: UserRole): GuidedStep[] | null {
+  if (flowId === TOUR_FLOW_ID) return tourSteps.filter((step) => step.roles.includes(role));
+  const task = guidedTasks.find((item) => item.id === flowId);
+  return task && task.roles.includes(role) ? task.steps : null;
+}
+
+function readFlow(): FlowState | null {
+  try {
+    const value = JSON.parse(window.sessionStorage.getItem(FLOW_KEY) ?? "null") as FlowState | null;
+    return value && typeof value.id === "string" && Number.isInteger(value.index) && value.index >= 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+const writeFlow = (state: FlowState) => window.sessionStorage.setItem(FLOW_KEY, JSON.stringify(state));
+const clearFlow = () => window.sessionStorage.removeItem(FLOW_KEY);
+
 export function startGuidedTour() {
-  window.dispatchEvent(new Event(TOUR_EVENT));
+  window.dispatchEvent(new CustomEvent<string>(FLOW_EVENT, { detail: TOUR_FLOW_ID }));
+}
+
+export function startGuidedTask(taskId: string) {
+  window.dispatchEvent(new CustomEvent<string>(FLOW_EVENT, { detail: taskId }));
 }
 
 export function GuidedTour({ role, section }: { role: UserRole; section: AppSection }) {
   const router = useRouter();
 
   useEffect(() => {
-    const steps = tourSteps.filter((step) => step.roles.includes(role));
-    const stepKey = `${STEP_KEY_PREFIX}${role}`;
     let stopCurrent: (() => void) | null = null;
-
-    const readStep = () => {
-      const raw = window.sessionStorage.getItem(stepKey);
-      const value = raw === null ? Number.NaN : Number(raw);
-      return Number.isInteger(value) && value >= 0 ? value : null;
-    };
-    const writeStep = (index: number) => window.sessionStorage.setItem(stepKey, String(index));
-    const clearStep = () => window.sessionStorage.removeItem(stepKey);
 
     // Stopping for navigation or unmount must not end the tour, so the flag suppresses clearStep.
     const stopRunning = () => {
@@ -76,7 +86,7 @@ export function GuidedTour({ role, section }: { role: UserRole; section: AppSect
       stopCurrent = null;
     };
 
-    function runGroup(index: number) {
+    function runGroup(flowId: string, steps: GuidedStep[], index: number) {
       stopRunning();
       let end = index;
       while (end < steps.length && steps[end].section === section) end += 1;
@@ -93,7 +103,7 @@ export function GuidedTour({ role, section }: { role: UserRole; section: AppSect
           active.destroy();
           return;
         }
-        writeStep(end);
+        writeFlow({ id: flowId, index: end });
         stopping = true;
         active.destroy();
         router.push(hrefFor(steps[end], role));
@@ -117,7 +127,7 @@ export function GuidedTour({ role, section }: { role: UserRole; section: AppSect
         onNextClick: (_element, _step, { driver: active, index: localIndex }) => advance(active, localIndex ?? 0),
         onDoneClick: (_element, _step, { driver: active, index: localIndex }) => advance(active, localIndex ?? 0),
         onDestroyed: () => {
-          if (!stopping) clearStep();
+          if (!stopping) clearFlow();
         },
       });
 
@@ -128,31 +138,35 @@ export function GuidedTour({ role, section }: { role: UserRole; section: AppSect
       instance.drive();
     }
 
-    function begin() {
+    function begin(event: Event) {
       stopRunning();
-      writeStep(0);
+      const flowId = (event as CustomEvent<string>).detail;
+      const steps = stepsFor(flowId, role);
+      if (!steps || steps.length === 0) return;
+      writeFlow({ id: flowId, index: 0 });
       if (steps[0].section !== section) {
         router.push(hrefFor(steps[0], role));
         return;
       }
-      runGroup(0);
+      runGroup(flowId, steps, 0);
     }
 
     function resume() {
-      const index = readStep();
-      if (index === null) return;
-      if (index < steps.length && steps[index].section === section) {
-        runGroup(index);
+      const state = readFlow();
+      if (!state) return;
+      const steps = stepsFor(state.id, role);
+      if (steps && state.index < steps.length && steps[state.index].section === section) {
+        runGroup(state.id, steps, state.index);
       } else {
-        clearStep();
+        clearFlow();
       }
     }
 
-    window.addEventListener(TOUR_EVENT, begin);
+    window.addEventListener(FLOW_EVENT, begin);
     resume();
 
     return () => {
-      window.removeEventListener(TOUR_EVENT, begin);
+      window.removeEventListener(FLOW_EVENT, begin);
       stopRunning();
     };
   }, [role, section, router]);
