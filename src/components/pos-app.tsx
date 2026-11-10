@@ -101,11 +101,13 @@ import {
   enableQueueAlarmSound,
   formatQueueElapsed,
   getQueueLevel,
+  isQueueAudioRunning,
   isQueueTimedStatus,
   playNewOrderChime,
   playQueueAlarmBeep,
   QUEUE_ALARM_REPEAT_MS,
   type QueueLevel,
+  unlockQueueAudio,
 } from "@/lib/queue-alarm";
 import { PRINTER_BAUD_RATES, type PrinterSerialPort } from "@/lib/types";
 import { calculateDiscountAmount, calculateOrderTotals, isDiscountEligible } from "@/lib/pricing";
@@ -1995,7 +1997,22 @@ function OrdersBoard({
   const now = useQueueClock(hasTimedOrders);
   const hasAlarm = now !== null && visibleOrders.some((order) =>
     isQueueTimedStatus(order.status) && getQueueLevel(order.createdAt, now) === "alarm");
-  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+
+  useEffect(() => {
+    if (isQueueAudioRunning()) return;
+    async function unlock() {
+      if (!(await unlockQueueAudio())) return;
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    }
+    window.addEventListener("pointerdown", unlock);
+    window.addEventListener("keydown", unlock);
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
 
   useEffect(() => {
     if (!hasAlarm || !soundEnabled) return;
@@ -2005,7 +2022,7 @@ function OrdersBoard({
   }, [hasAlarm, soundEnabled]);
 
   async function toggleAlarmSound() {
-    if (soundEnabled) {
+    if (soundEnabled && isQueueAudioRunning()) {
       setSoundEnabled(false);
       return;
     }
@@ -2405,6 +2422,7 @@ function DiscountManager({
   const [value, setValue] = useState("");
   const [minSubtotal, setMinSubtotal] = useState("");
   const [maxAmount, setMaxAmount] = useState("");
+  const [discountToRemove, setDiscountToRemove] = useState<Discount | null>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -2521,11 +2539,7 @@ function DiscountManager({
                         disabled={pending}
                         title="Hapus diskon"
                         aria-label={`Hapus diskon ${discount.name}`}
-                        onClick={() => {
-                          if (window.confirm(`Hapus diskon "${discount.name}"? Riwayat transaksi lama tetap menyimpan nama dan potongannya.`)) {
-                            void onRemove(discount.id);
-                          }
-                        }}
+                        onClick={() => setDiscountToRemove(discount)}
                       >
                         <Trash2 />
                       </Button>
@@ -2535,6 +2549,19 @@ function DiscountManager({
               ))}
             </TableBody>
           </Table>
+        )}
+        {discountToRemove && (
+          <ConfirmDialog
+            title={`Hapus diskon "${discountToRemove.name}"?`}
+            description="Riwayat transaksi lama tetap menyimpan nama dan potongannya."
+            confirmLabel="Hapus diskon"
+            onClose={() => setDiscountToRemove(null)}
+            onConfirm={() => {
+              const discountId = discountToRemove.id;
+              setDiscountToRemove(null);
+              void onRemove(discountId);
+            }}
+          />
         )}
       </CardContent>
     </Card>
@@ -4391,6 +4418,7 @@ function TableLayoutEditor({ tables, shapes, pending, runAction }: {
   const [selection, setSelection] = useState<MapSelection>(null);
   const [newName, setNewName] = useState("");
   const [renameValue, setRenameValue] = useState("");
+  const [confirmDeleteTable, setConfirmDeleteTable] = useState(false);
   const selectedTableId = selection?.type === "table" ? selection.id : null;
   const selected = tables.find((table) => table.id === selectedTableId) ?? null;
   const selectedShape = selection?.type === "shape" ? shapes.find((shape) => shape.id === selection.id) ?? null : null;
@@ -4436,14 +4464,17 @@ function TableLayoutEditor({ tables, shapes, pending, runAction }: {
     );
   }
 
-  async function deleteTable() {
+  async function removeTable() {
     if (!selected) return;
-    if (!window.confirm(`Hapus ${selected.name} dari denah?`)) return;
     const result = await runAction(
       () => requestJson(`/api/tables/${selected.id}`, "DELETE"),
       "Meja dihapus.",
     );
     if (result !== null) setSelection(null);
+  }
+
+  function deleteTable() {
+    if (selected) setConfirmDeleteTable(true);
   }
 
   function moveTable(table: DiningTable, x: number, y: number) {
@@ -4467,6 +4498,18 @@ function TableLayoutEditor({ tables, shapes, pending, runAction }: {
         onChangeShape={changeShape}
         className="table-map-admin"
       />
+      {confirmDeleteTable && selected && (
+        <ConfirmDialog
+          title={`Hapus ${selected.name} dari denah?`}
+          description="Meja ini akan dihapus dari denah."
+          confirmLabel="Hapus meja"
+          onClose={() => setConfirmDeleteTable(false)}
+          onConfirm={() => {
+            setConfirmDeleteTable(false);
+            void removeTable();
+          }}
+        />
+      )}
       <div className="flex flex-col gap-4">
         <form className="flex flex-col gap-2" onSubmit={addTable}>
           <Label>Tambah meja</Label>
@@ -4552,6 +4595,7 @@ function ShapeInspector({ shape, pending, runAction, onDeleted }: {
   const [label, setLabel] = useState(shape.label);
   const [width, setWidth] = useState(String(shape.width));
   const [height, setHeight] = useState(String(shape.height));
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const trimmedLabel = label.trim();
   const nextWidth = Number(width);
   const nextHeight = Number(height);
@@ -4566,8 +4610,7 @@ function ShapeInspector({ shape, pending, runAction, onDeleted }: {
     );
   }
 
-  async function deleteShape() {
-    if (!window.confirm(`Hapus ${shapeKindLabels[shape.kind]} dari denah?`)) return;
+  async function removeShape() {
     const result = await runAction(() => requestJson(`/api/map-shapes/${shape.id}`, "DELETE"), "Area dihapus.");
     if (result !== null) onDeleted();
   }
@@ -4606,10 +4649,22 @@ function ShapeInspector({ shape, pending, runAction, onDeleted }: {
         <Button type="button" variant="outline" disabled={pending || !sizeValid || !changed} onClick={saveShape}>
           Simpan area
         </Button>
-        <Button type="button" variant="destructive" disabled={pending} onClick={deleteShape}>
+        <Button type="button" variant="destructive" disabled={pending} onClick={() => setConfirmDelete(true)}>
           <Trash2 data-icon="inline-start" /> Hapus area
         </Button>
       </CardFooter>
+      {confirmDelete && (
+        <ConfirmDialog
+          title={`Hapus ${shapeKindLabels[shape.kind]} dari denah?`}
+          description="Area ini akan dihapus dari denah."
+          confirmLabel="Hapus area"
+          onClose={() => setConfirmDelete(false)}
+          onConfirm={() => {
+            setConfirmDelete(false);
+            void removeShape();
+          }}
+        />
+      )}
     </Card>
   );
 }

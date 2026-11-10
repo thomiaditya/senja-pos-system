@@ -368,7 +368,7 @@ export function TableMap({
 
 
   return (
-    <div className={`table-map ${className ?? ""}`.trim()}>
+    <div className={`table-map isolate ${className ?? ""}`.trim()}>
       <div
         ref={containerRef}
         className="table-map-canvas"

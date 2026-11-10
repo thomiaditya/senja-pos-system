@@ -28,14 +28,22 @@ export function formatQueueElapsed(createdAt: string, now: number) {
 
 let alarmAudio: AudioContext | null = null;
 
-// Browsers block audio until a user gesture, so this must be called from a click handler.
-export async function enableQueueAlarmSound(): Promise<boolean> {
+export function isQueueAudioRunning() {
+  return alarmAudio?.state === "running";
+}
+
+// Browsers block audio until a user gesture, so call this from a pointer or key handler.
+export async function unlockQueueAudio(): Promise<boolean> {
   const AudioContextClass = window.AudioContext
     ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!AudioContextClass) return false;
   alarmAudio ??= new AudioContextClass();
   if (alarmAudio.state === "suspended") await alarmAudio.resume();
-  if (alarmAudio.state !== "running") return false;
+  return alarmAudio.state === "running";
+}
+
+export async function enableQueueAlarmSound(): Promise<boolean> {
+  if (!(await unlockQueueAudio())) return false;
   playQueueAlarmBeep();
   return true;
 }
