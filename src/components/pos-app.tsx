@@ -102,6 +102,7 @@ import {
   formatQueueElapsed,
   getQueueLevel,
   isQueueTimedStatus,
+  playNewOrderChime,
   playQueueAlarmBeep,
   QUEUE_ALARM_REPEAT_MS,
   type QueueLevel,
@@ -293,6 +294,8 @@ async function requestJson<T>(
   return result;
 }
 
+const ORDERS_POLL_MS = 4000;
+
 export function PosApp({
   initialData,
   section,
@@ -315,6 +318,35 @@ export function PosApp({
     setData(updated);
     return updated;
   }
+
+  const ordersSignature = useRef<string | null>(null);
+  useEffect(() => {
+    if (section !== "pesanan") return;
+    let inFlight = false;
+    async function syncOrders() {
+      if (inFlight || document.visibilityState !== "visible") return;
+      inFlight = true;
+      try {
+        const { signature } = await requestJson<{ signature: string }>("/api/orders/feed", "GET", undefined, () => router.replace("/login"));
+        const previous = ordersSignature.current;
+        ordersSignature.current = signature;
+        if (previous !== signature) {
+          setData(await requestJson<PosBootstrap>("/api/bootstrap", "GET", undefined, () => router.replace("/login")));
+        }
+      } catch {
+        // Polling is best-effort; the next tick retries.
+      } finally {
+        inFlight = false;
+      }
+    }
+    void syncOrders();
+    const intervalId = window.setInterval(syncOrders, ORDERS_POLL_MS);
+    document.addEventListener("visibilitychange", syncOrders);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", syncOrders);
+    };
+  }, [section, router]);
 
   async function perform<T>(work: () => Promise<T>, successMessage: string, refreshData = true) {
     setPending(true);
@@ -1503,7 +1535,7 @@ function TabCloseDialog({
                       </Button>
                     )}
                     {isCashier && !cancelled && order.status !== "Completed" && !order.cancelRequest && (
-                      <Button type="button" variant="ghost" size="sm" className="self-start" disabled={busy} onClick={() => setBatchCancel({ order, mode: "request" })}>
+                      <Button type="button" variant="ghost" size="sm" className="self-start text-red-600" disabled={busy} onClick={() => setBatchCancel({ order, mode: "request" })}>
                         Ajukan pembatalan ke SPV
                       </Button>
                     )}
@@ -1950,7 +1982,10 @@ function OrdersBoard({
 }) {
   const stationRole = data.user.role === "barista" ? "Barista" : data.user.role === "kitchen" ? "Kitchen" : null;
   const filter: "Semua" | "Kitchen" | "Barista" = stationRole ?? (station ? stationLabels[station] : "Semua");
-  const visibleOrders = data.orders.filter((order) => filter === "Semua" || order.tickets.some((ticket) => ticket.station === filter));
+  const visibleOrders = useMemo(
+    () => data.orders.filter((order) => filter === "Semua" || order.tickets.some((ticket) => ticket.station === filter)),
+    [data.orders, filter],
+  );
   const canPrint = data.user.role === "admin" || data.user.role === "cashier";
   const canPickup = canPrint;
   const canCancel = data.user.role === "admin";
@@ -1977,9 +2012,20 @@ function OrdersBoard({
     if (await enableQueueAlarmSound()) {
       setSoundEnabled(true);
     } else {
-      toast.error("Browser belum mengizinkan suara. Klik tombol suara alarm sekali lagi.");
+      toast.error("Browser belum mengizinkan suara. Klik tombol suara pesanan sekali lagi.");
     }
   }
+
+  const seenOrderIds = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const previousIds = seenOrderIds.current;
+    seenOrderIds.current = new Set(visibleOrders.map((order) => order.id));
+    if (previousIds === null) return;
+    const newOrders = visibleOrders.filter((order) => !previousIds.has(order.id));
+    if (newOrders.length === 0) return;
+    toast.info(`Pesanan baru masuk: ${newOrders.map((order) => order.orderNumber).join(", ")}`);
+    if (soundEnabled) playNewOrderChime();
+  }, [visibleOrders, soundEnabled]);
   const stationTabs: { label: string; value: "Semua" | "Kitchen" | "Barista"; href: string }[] = [
     { label: "Semua", value: "Semua", href: "/pesanan" },
     { label: "Barista", value: "Barista", href: "/pesanan/barista" },
@@ -2018,7 +2064,7 @@ function OrdersBoard({
           onClick={toggleAlarmSound}
         >
           {soundEnabled ? <Bell /> : <BellOff />}
-          {soundEnabled ? "Suara alarm aktif" : "Aktifkan suara alarm"}
+          {soundEnabled ? "Suara pesanan aktif" : "Aktifkan suara pesanan"}
         </Button>
       </div>
       {hasAlarm && !soundEnabled && (

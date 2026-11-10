@@ -58,3 +58,24 @@ export function playQueueAlarmBeep() {
     oscillator.stop(at + 0.25);
   }
 }
+
+// Two rising sine tones, so a new order sounds different from the overdue alarm.
+export function playNewOrderChime() {
+  const audio = alarmAudio;
+  if (!audio || audio.state !== "running") return;
+  const start = audio.currentTime;
+  [660, 990].forEach((frequency, index) => {
+    const at = start + index * 0.18;
+    const oscillator = audio.createOscillator();
+    const gain = audio.createGain();
+    oscillator.type = "sine";
+    oscillator.frequency.value = frequency;
+    gain.gain.setValueAtTime(0.0001, at);
+    gain.gain.exponentialRampToValueAtTime(0.3, at + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.3);
+    oscillator.connect(gain).connect(audio.destination);
+    oscillator.start(at);
+    oscillator.stop(at + 0.32);
+  });
+}
+

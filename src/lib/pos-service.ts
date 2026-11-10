@@ -611,6 +611,17 @@ export function getPosBootstrap(user: SessionUser): PosBootstrap {
   };
 }
 
+export function getOrdersSignature(user: SessionUser): string {
+  const orders = getOrders(user).map((order) => [
+    order.id,
+    order.status,
+    order.paymentStatus,
+    order.tickets.map((ticket) => ticket.status),
+  ]);
+  const cancelRequests = user.role === "admin" ? getPendingCancelRequests().map((request) => request.id) : [];
+  return JSON.stringify([orders, cancelRequests]);
+}
+
 function writeAudit(
   userId: string,
   action: string,
