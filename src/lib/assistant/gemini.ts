@@ -34,6 +34,11 @@ const ROLE_LABELS: Record<SessionUser["role"], string> = {
 };
 
 const UNAVAILABLE_MESSAGE = "Asisten AI sedang tidak tersedia. Silakan coba lagi beberapa saat.";
+const BLOCKED_MESSAGE = "Maaf, pertanyaan ini tidak dapat saya jawab. Coba tanyakan dengan kalimat lain.";
+const EMPTY_MESSAGE = "Maaf, saya belum bisa menjawab pertanyaan itu. Coba tanyakan dengan kalimat lain.";
+const TOO_MANY_STEPS_MESSAGE = "Maaf, pertanyaan ini membutuhkan terlalu banyak langkah. Coba persempit pertanyaannya.";
+
+export type AssistantEvent = { type: "delta"; text: string };
 
 function buildSystemInstruction(user: SessionUser) {
   return [
@@ -50,36 +55,82 @@ function buildSystemInstruction(user: SessionUser) {
   ].join("\n");
 }
 
-async function generateContent(apiKey: string, model: string, body: unknown): Promise<GeminiResponse> {
-  let response: Response;
-  try {
-    response = await fetch(`${GEMINI_ENDPOINT}/${encodeURIComponent(model)}:generateContent`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
-      },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      cache: "no-store",
-    });
-  } catch (error) {
-    console.error("Permintaan ke Gemini gagal dikirim.", error);
-    throw new ApiError(502, UNAVAILABLE_MESSAGE, "AI_UNAVAILABLE");
-  }
+async function* streamGenerateContent(
+  apiKey: string,
+  model: string,
+  body: unknown,
+  callerSignal?: AbortSignal,
+): AsyncGenerator<GeminiResponse> {
+  const controller = new AbortController();
+  const abortUpstream = () => controller.abort();
+  callerSignal?.addEventListener("abort", abortUpstream);
+  // Batas waktu hanya untuk memulai respons; isi stream boleh berjalan lebih lama.
+  const connectTimer = setTimeout(abortUpstream, REQUEST_TIMEOUT_MS);
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
 
-  if (response.status === 429) {
-    throw new ApiError(429, "Asisten AI sedang sibuk. Coba lagi dalam beberapa saat.", "AI_RATE_LIMITED");
-  }
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    console.error(`Gemini mengembalikan status ${response.status}.`, detail.slice(0, 300));
+  try {
+    let response: Response;
+    try {
+      response = await fetch(`${GEMINI_ENDPOINT}/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+        cache: "no-store",
+      });
+    } catch (error) {
+      console.error("Permintaan ke Gemini gagal dikirim.", error);
+      throw new ApiError(502, UNAVAILABLE_MESSAGE, "AI_UNAVAILABLE");
+    } finally {
+      clearTimeout(connectTimer);
+    }
+
+    if (response.status === 429) {
+      throw new ApiError(429, "Asisten AI sedang sibuk. Coba lagi dalam beberapa saat.", "AI_RATE_LIMITED");
+    }
+    if (!response.ok || !response.body) {
+      const detail = await response.text().catch(() => "");
+      console.error(`Gemini mengembalikan status ${response.status}.`, detail.slice(0, 300));
+      throw new ApiError(502, UNAVAILABLE_MESSAGE, "AI_UNAVAILABLE");
+    }
+
+    reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      let newline = buffer.indexOf("\n");
+      while (newline !== -1) {
+        const line = buffer.slice(0, newline).trim();
+        buffer = buffer.slice(newline + 1);
+        newline = buffer.indexOf("\n");
+        if (line.startsWith("data:")) yield JSON.parse(line.slice(5)) as GeminiResponse;
+      }
+    }
+    const rest = (buffer + decoder.decode()).trim();
+    if (rest.startsWith("data:")) yield JSON.parse(rest.slice(5)) as GeminiResponse;
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    console.error("Gagal membaca respons stream dari Gemini.", error);
     throw new ApiError(502, UNAVAILABLE_MESSAGE, "AI_UNAVAILABLE");
+  } finally {
+    callerSignal?.removeEventListener("abort", abortUpstream);
+    clearTimeout(connectTimer);
+    void reader?.cancel().catch(() => {});
   }
-  return (await response.json()) as GeminiResponse;
 }
 
-export async function answerWithAssistant(user: SessionUser, messages: ChatMessage[]): Promise<string> {
+export async function* streamAssistantReply(
+  user: SessionUser,
+  messages: ChatMessage[],
+  signal?: AbortSignal,
+): AsyncGenerator<AssistantEvent> {
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) {
     throw new ApiError(
@@ -97,41 +148,50 @@ export async function answerWithAssistant(user: SessionUser, messages: ChatMessa
   }));
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
-    const data = await generateContent(apiKey, model, {
-      systemInstruction: { parts: [{ text: buildSystemInstruction(user) }] },
-      contents,
-      ...(functionDeclarations.length > 0 ? { tools: [{ functionDeclarations }] } : {}),
-    });
+    const parts: GeminiPart[] = [];
+    let blocked = false;
+    let emitted = false;
 
-    const candidate = data.candidates?.[0];
-    if (!candidate?.content) {
-      if (data.promptFeedback?.blockReason) {
-        return "Maaf, pertanyaan ini tidak dapat saya jawab. Coba tanyakan dengan kalimat lain.";
+    const stream = streamGenerateContent(
+      apiKey,
+      model,
+      {
+        systemInstruction: { parts: [{ text: buildSystemInstruction(user) }] },
+        contents,
+        ...(functionDeclarations.length > 0 ? { tools: [{ functionDeclarations }] } : {}),
+      },
+      signal,
+    );
+    for await (const chunk of stream) {
+      if (chunk.promptFeedback?.blockReason) blocked = true;
+      for (const part of chunk.candidates?.[0]?.content?.parts ?? []) {
+        // Semua part disimpan apa adanya agar thought signature ikut terkirim pada putaran berikutnya.
+        parts.push(part);
+        if (!part.thought && part.text) {
+          emitted = true;
+          yield { type: "delta", text: part.text };
+        }
       }
-      throw new ApiError(502, UNAVAILABLE_MESSAGE, "AI_UNAVAILABLE");
     }
 
-    const parts = candidate.content.parts ?? [];
-    const functionCalls = parts.filter((part) => part.functionCall);
-    if (functionCalls.length === 0) {
-      const text = parts
-        .filter((part) => !part.thought && typeof part.text === "string")
-        .map((part) => part.text)
-        .join("")
-        .trim();
-      return text || "Maaf, saya belum bisa menjawab pertanyaan itu. Coba tanyakan dengan kalimat lain.";
+    const calls = parts.flatMap((part) => (part.functionCall ? [part.functionCall] : []));
+    if (calls.length === 0) {
+      if (!emitted) {
+        if (blocked) yield { type: "delta", text: BLOCKED_MESSAGE };
+        else if (parts.length === 0) throw new ApiError(502, UNAVAILABLE_MESSAGE, "AI_UNAVAILABLE");
+        else yield { type: "delta", text: EMPTY_MESSAGE };
+      }
+      return;
     }
 
-    // Kirim kembali konten model apa adanya agar thought signature tetap terbawa.
-    contents.push(candidate.content);
+    contents.push({ role: "model", parts });
     contents.push({
       role: "user",
-      parts: functionCalls.map((part) => {
-        const name = part.functionCall!.name;
-        return { functionResponse: { name, response: runAssistantTool(user, name) } };
-      }),
+      parts: calls.map((call) => ({
+        functionResponse: { name: call.name, response: runAssistantTool(user, call.name) },
+      })),
     });
   }
 
-  return "Maaf, pertanyaan ini membutuhkan terlalu banyak langkah. Coba persempit pertanyaannya.";
+  yield { type: "delta", text: TOO_MANY_STEPS_MESSAGE };
 }
