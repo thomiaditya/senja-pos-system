@@ -19,6 +19,8 @@ pnpm dev
 
 Untuk mencoba aplikasi dengan data contoh (9 menu, 10 bahan, 10 meja, 4 area denah, 4 pesanan), jalankan `pnpm db:setup -- --demo`. Data contoh hanya ditambahkan saat flag ini dipakai dan langsung menandai setup sebagai selesai.
 
+Untuk demo di Vercel, atur env `POS_DB_PATH=/tmp/kopi-senja/pos.sqlite`, `POS_SEED_DEMO=1`, `DEMO_PASSWORD`, dan `SESSION_SECRET`. Saat database kosong, aplikasi otomatis mengisi data contoh yang sama seperti `--demo`. Database di `/tmp` bersifat sementara dan dapat kembali kosong saat instance baru dibuat. Printer dan laci kasir (Bluetooth/serial) tidak berfungsi di Vercel.
+
 Buka `http://localhost:3000` pada server. Perangkat kasir dan stasiun produksi dapat membuka `http://<IP-LAN-server>:3000` selama berada di jaringan lokal yang sama.
 
 ## Setup awal outlet

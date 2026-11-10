@@ -3,6 +3,7 @@ import "server-only";
 import Database from "better-sqlite3";
 import { mkdirSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
+import { seedDatabase } from "./db/demo-seed.mjs";
 
 const databasePath = process.env.POS_DB_PATH ?? path.join(process.cwd(), "data/pos.sqlite");
 export const dataDirectory = path.dirname(databasePath);
@@ -41,6 +42,13 @@ function openDatabase() {
       connection.exec(sql);
       addMigration.run(filename, new Date().toISOString());
     }).immediate();
+  }
+
+  if (process.env.POS_SEED_DEMO === "1" && process.env.DEMO_PASSWORD) {
+    const { count } = connection.prepare("SELECT COUNT(*) AS count FROM users").get() as { count: number };
+    if (count === 0) {
+      seedDatabase(connection, { withDemo: true, demoPassword: process.env.DEMO_PASSWORD });
+    }
   }
 
   return connection;
