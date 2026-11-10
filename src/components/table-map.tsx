@@ -54,6 +54,8 @@ function escapeHtml(value: string) {
     .replace(/'/g, "&#39;");
 }
 
+const tabTotalFormatter = new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 });
+
 function clamp(value: number) {
   return Math.min(100, Math.max(0, Math.round(value * 10) / 10));
 }
@@ -328,7 +330,7 @@ export function TableMap({
 
     for (const table of tables) {
       const isSelected = table.id === selectedTableId;
-      const status = table.occupied ? "Terisi" : "Kosong";
+      const status = table.openTab ? `Tab ${tabTotalFormatter.format(table.openTab.total)}` : table.occupied ? "Terisi" : "Kosong";
       const classes = [
         "table-marker",
         table.occupied ? "is-occupied" : "is-free",

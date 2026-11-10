@@ -6,24 +6,49 @@ export const loginSchema = z.object({
   password: z.string().min(1).max(128),
 });
 
+const orderLinesSchema = z.array(z.object({
+  productId: z.number().int().positive(),
+  quantity: z.number().int().min(1).max(50),
+  modifier: z.string().trim().max(80),
+})).min(1).max(30);
+
+const paymentMethodSchema = z.enum(["Cash", "QRIS", "Debit/Kredit", "Kasbon"]);
+
 export const createOrderSchema = z.object({
   idempotencyKey: z.uuid(),
   type: z.enum(["Dine-in", "Takeaway"]),
   customerName: z.string().trim().min(1, "Nama pelanggan wajib diisi.").max(60),
   table: z.string().trim().min(1).max(32).nullable(),
-  paymentMethod: z.enum(["Cash", "QRIS", "Debit/Kredit", "Kasbon"]),
+  paymentMethod: paymentMethodSchema,
   cashReceived: z.number().int().nonnegative().nullable(),
   discountId: z.number().int().positive().nullable(),
   note: z.string().trim().max(240),
-  items: z.array(z.object({
-    productId: z.number().int().positive(),
-    quantity: z.number().int().min(1).max(50),
-    modifier: z.string().trim().max(80),
-  })).min(1).max(30),
+  items: orderLinesSchema,
 }).refine(
   (order) => (order.type === "Dine-in" ? Boolean(order.table) : order.table === null),
   { message: "Pesanan dine-in memerlukan meja; takeaway tidak menggunakan meja." },
 );
+
+export const tabOpenSchema = z.object({
+  idempotencyKey: z.uuid(),
+  table: z.string().trim().min(1).max(32),
+  customerName: z.string().trim().min(1, "Nama pelanggan wajib diisi.").max(60),
+  discountId: z.number().int().positive().nullable(),
+  note: z.string().trim().max(240),
+  items: orderLinesSchema,
+});
+
+export const tabOrderSchema = z.object({
+  idempotencyKey: z.uuid(),
+  discountId: z.number().int().positive().nullable(),
+  note: z.string().trim().max(240),
+  items: orderLinesSchema,
+});
+
+export const tabCloseSchema = z.object({
+  paymentMethod: paymentMethodSchema,
+  cashReceived: z.number().int().nonnegative().nullable(),
+});
 
 export const creditPaymentSchema = z.object({
   amount: z.number().int().positive().max(100_000_000_000),

@@ -32,6 +32,7 @@ import type {
   Receivable,
   SessionUser,
   StationTicket,
+  TabDetail,
   TablePickerMode,
   UserRole,
 } from "@/lib/types";
@@ -57,6 +58,9 @@ import {
   settingsUpdateSchema,
   shiftCloseSchema,
   shiftOpenSchema,
+  tabCloseSchema,
+  tabOpenSchema,
+  tabOrderSchema,
 } from "@/lib/validation";
 import { MAX_RECEIPT_BYTES, readImageFile, readUpload, removeUpload, saveUpload, type ImageType } from "@/lib/uploads";
 import { buildDrawerKickJob, buildReceiptJob, buildTestJob, buildTicketJob } from "@/lib/printing/escpos";
@@ -64,6 +68,9 @@ import { listSerialPorts, sendToPrinter, type PrinterConfig } from "@/lib/printi
 import { calculateDiscountAmount, calculateOrderTotals, isDiscountEligible } from "@/lib/pricing";
 
 type OrderInput = ReturnType<typeof createOrderSchema.parse>;
+type TabOpenInput = ReturnType<typeof tabOpenSchema.parse>;
+type TabOrderInput = ReturnType<typeof tabOrderSchema.parse>;
+type TabCloseInput = ReturnType<typeof tabCloseSchema.parse>;
 type CreditPaymentInput = ReturnType<typeof creditPaymentSchema.parse>;
 type CreditPaymentMethod = CreditPaymentInput["method"];
 type DiscountCreate = ReturnType<typeof discountCreateSchema.parse>;
@@ -103,6 +110,7 @@ type DbOrder = {
   order_type: "Dine-in" | "Takeaway";
   customer_name: string | null;
   table_number: string | null;
+  tab_id: string | null;
   status: Order["status"];
   subtotal: number;
   discount_name: string | null;
@@ -122,6 +130,21 @@ type DbOrder = {
   credit_status: CreditStatus | null;
   credit_total: number | null;
   credit_paid: number | null;
+};
+
+type TabRow = {
+  id: string;
+  table_name: string;
+  customer_name: string;
+  status: "Open" | "Closed";
+  opened_by: string;
+  opened_at: string;
+  closed_by: string | null;
+  closed_at: string | null;
+  payment_method: TabDetail["paymentMethod"];
+  cash_received: number | null;
+  change_amount: number | null;
+  shift_id: string | null;
 };
 
 type DbItem = {
@@ -286,11 +309,12 @@ function toOrderCredit(status: CreditStatus, total: number, paid: number): Order
   return { status, total, paid, outstanding };
 }
 
-export function getOrders(user: SessionUser, orderId?: string): Order[] {
-  const orderWhere = orderId ? "WHERE o.id = ?" : "";
-  const orderLimit = orderId ? "" : "LIMIT 100";
+export function getOrders(user: SessionUser, orderId?: string, tabId?: string): Order[] {
+  const filters = [orderId ? "o.id = ?" : null, tabId ? "o.tab_id = ?" : null].filter(Boolean);
+  const orderWhere = filters.length > 0 ? `WHERE ${filters.join(" AND ")}` : "";
+  const orderLimit = orderWhere ? "" : "LIMIT 100";
   const orderRows = db.prepare(`
-    SELECT o.id, o.order_number, o.created_at, o.order_type, o.customer_name, o.table_number, o.status,
+    SELECT o.id, o.order_number, o.created_at, o.order_type, o.customer_name, o.table_number, o.tab_id, o.status,
       o.subtotal, o.discount_name, o.discount_kind, o.discount_value, o.discount_amount,
       o.tax, o.total, o.note, o.cancel_reason, o.collected_at,
       p.method, p.status AS payment_status, p.reference, p.cash_received, p.change_amount,
@@ -303,7 +327,7 @@ export function getOrders(user: SessionUser, orderId?: string): Order[] {
     ${orderWhere}
     ORDER BY o.created_at DESC
     ${orderLimit}
-  `).all(...(orderId ? [orderId] : [])) as DbOrder[];
+  `).all(...[orderId, tabId].filter((value): value is string => Boolean(value))) as DbOrder[];
   if (orderRows.length === 0) return [];
 
   const ids = orderRows.map((order) => order.id);
@@ -380,6 +404,7 @@ export function getOrders(user: SessionUser, orderId?: string): Order[] {
       type: row.order_type,
       customerName: stationRole ? null : row.customer_name,
       table: row.table_number,
+      tabId: row.tab_id,
       status: row.status,
       paymentMethod: stationRole ? null : (row.method ?? (credit ? "Kasbon" : null)),
       paymentStatus: stationRole ? null : row.payment_status,
@@ -458,11 +483,13 @@ export function getSummary(includeBusinessMetrics: boolean): PosSummary {
 
   // Kasbon orders count toward revenue only through their settlements (credit_payments).
   const KASBON_ORDER_EXISTS = "EXISTS (SELECT 1 FROM credit_accounts c WHERE c.order_id = o.id)";
+  // Batches on a still-open tab are unpaid; they count toward revenue when the tab closes.
+  const OPEN_TAB_ORDER_EXISTS = "EXISTS (SELECT 1 FROM table_tabs t WHERE t.id = o.tab_id AND t.status = 'Open')";
   const today = outletDate();
   const sales = db.prepare(`
     SELECT COALESCE(SUM(CASE WHEN ${KASBON_ORDER_EXISTS} THEN 0 ELSE o.total END), 0) AS total, COUNT(*) AS count
     FROM orders o
-    WHERE date(o.created_at, '+7 hours') = ? AND o.status != 'Cancelled'
+    WHERE date(o.created_at, '+7 hours') = ? AND o.status != 'Cancelled' AND NOT ${OPEN_TAB_ORDER_EXISTS}
   `).get(today) as { total: number; count: number };
   const todayCredit = db.prepare(`
     SELECT COALESCE(SUM(CASE WHEN kind = 'Cicilan' THEN amount ELSE -amount END), 0) AS total
@@ -477,7 +504,7 @@ export function getSummary(includeBusinessMetrics: boolean): PosSummary {
     SELECT date(o.created_at, '+7 hours') AS business_date,
       COALESCE(SUM(CASE WHEN ${KASBON_ORDER_EXISTS} THEN 0 ELSE o.total END), 0) AS total
     FROM orders o
-    WHERE date(o.created_at, '+7 hours') BETWEEN ? AND ? AND o.status != 'Cancelled'
+    WHERE date(o.created_at, '+7 hours') BETWEEN ? AND ? AND o.status != 'Cancelled' AND NOT ${OPEN_TAB_ORDER_EXISTS}
     GROUP BY business_date
   `).all(dailyStart, today) as { business_date: string; total: number }[];
   const dailyCreditRows = db.prepare(`
@@ -503,7 +530,7 @@ export function getSummary(includeBusinessMetrics: boolean): PosSummary {
     SELECT oi.product_name AS name, SUM(oi.quantity) AS quantity
     FROM order_items oi
     JOIN orders o ON o.id = oi.order_id
-    WHERE date(o.created_at, '+7 hours') = ? AND o.status != 'Cancelled'
+    WHERE date(o.created_at, '+7 hours') = ? AND o.status != 'Cancelled' AND NOT ${OPEN_TAB_ORDER_EXISTS}
     GROUP BY oi.product_id, oi.product_name
     ORDER BY quantity DESC, name
     LIMIT 5
@@ -601,8 +628,25 @@ function getOrderDate() {
   return outletDate();
 }
 
-export function createPaidOrder(user: SessionUser, rawInput: unknown): string {
-  const input = createOrderSchema.parse(rawInput) as OrderInput;
+type PlaceOrderInput = {
+  idempotencyKey: string;
+  type: "Dine-in" | "Takeaway";
+  customerName: string;
+  table: string | null;
+  discountId: number | null;
+  note: string;
+  items: OrderInput["items"];
+  // null for a tab batch: payment is collected when the tab closes.
+  payment: { method: OrderInput["paymentMethod"]; cashReceived: number | null } | null;
+  tabId: string | null;
+};
+
+function getOpenTabByTable(tableName: string) {
+  return db.prepare("SELECT id FROM table_tabs WHERE table_name = ? COLLATE NOCASE AND status = 'Open'")
+    .get(tableName) as { id: string } | undefined;
+}
+
+function placeOrder(user: SessionUser, input: PlaceOrderInput): string {
   const create = db.transaction(() => {
     const existing = db.prepare("SELECT id FROM orders WHERE idempotency_key = ?")
       .get(input.idempotencyKey) as { id: string } | undefined;
@@ -671,10 +715,13 @@ export function createPaidOrder(user: SessionUser, rawInput: unknown): string {
       }
     }
 
-    if (input.type === "Dine-in") {
+    if (input.type === "Dine-in" && input.table !== null) {
       const table = db.prepare("SELECT id FROM dining_tables WHERE name = ? COLLATE NOCASE")
         .get(input.table);
       if (!table) throw new ApiError(400, "Meja tidak ditemukan. Pilih meja dari denah.", "TABLE_NOT_FOUND");
+      if (input.tabId === null && getOpenTabByTable(input.table)) {
+        throw new ApiError(409, "Meja ini sedang memakai tab. Tambahkan pesanan lewat tab meja.", "TABLE_HAS_OPEN_TAB");
+      }
     }
 
     const subtotal = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
@@ -682,13 +729,14 @@ export function createPaidOrder(user: SessionUser, rawInput: unknown): string {
     const discountAmount = discount ? calculateDiscountAmount(discount, subtotal) : 0;
     const taxRateBasisPoints = Number(getSetting("tax_rate_basis_points", "1000"));
     const { tax, total } = calculateOrderTotals(subtotal, taxRateBasisPoints, discountAmount);
-    if (input.paymentMethod === "Cash" && (input.cashReceived === null || input.cashReceived < total)) {
+    const payment = input.payment;
+    if (payment?.method === "Cash" && (payment.cashReceived === null || payment.cashReceived < total)) {
       throw new ApiError(400, "Nominal uang tunai kurang dari total pembayaran.", "INSUFFICIENT_CASH");
     }
-    if (input.paymentMethod !== "Cash" && input.cashReceived !== null) {
+    if (payment && payment.method !== "Cash" && payment.cashReceived !== null) {
       throw new ApiError(400, "Nominal uang hanya diisi untuk pembayaran tunai.", "INVALID_CASH_AMOUNT");
     }
-    if (input.paymentMethod === "Kasbon") {
+    if (payment?.method === "Kasbon") {
       const limit = getKasbonLimit();
       const outstanding = getCustomerOutstanding(input.customerName);
       if (outstanding + total > limit) {
@@ -716,8 +764,8 @@ export function createPaidOrder(user: SessionUser, rawInput: unknown): string {
       INSERT INTO orders (
         id, order_number, idempotency_key, created_at, order_type, customer_name, table_number, status,
         subtotal, discount_id, discount_name, discount_kind, discount_value, discount_amount,
-        tax, total, note, created_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        tax, total, note, created_by, tab_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       orderId,
       orderNumber,
@@ -737,36 +785,39 @@ export function createPaidOrder(user: SessionUser, rawInput: unknown): string {
       total,
       input.note,
       user.id,
+      input.tabId,
     );
     db.prepare(`
       INSERT INTO customers (name, order_count, last_order_at) VALUES (?, 1, ?)
       ON CONFLICT(name) DO UPDATE SET order_count = order_count + 1, last_order_at = excluded.last_order_at
     `).run(input.customerName, createdAt);
-    const openShift = getOpenCashShiftRow();
-    if (input.paymentMethod === "Cash" && !openShift) {
-      throw new ApiError(409, "Buka shift kas dulu sebelum menerima pembayaran tunai.", "SHIFT_REQUIRED");
-    }
-    if (input.paymentMethod === "Kasbon") {
-      db.prepare(`
-        INSERT INTO credit_accounts (id, order_id, customer_name, total, status, created_at)
-        VALUES (?, ?, ?, ?, 'Open', ?)
-      `).run(randomUUID(), orderId, input.customerName, total, createdAt);
-    } else {
-      db.prepare(`
-        INSERT INTO payments (
-          id, order_id, method, status, amount, reference, cash_received, change_amount, created_at, shift_id
-        ) VALUES (?, ?, ?, 'Paid', ?, ?, ?, ?, ?, ?)
-      `).run(
-        randomUUID(),
-        orderId,
-        input.paymentMethod,
-        total,
-        reference,
-        input.cashReceived,
-        input.cashReceived === null ? null : input.cashReceived - total,
-        createdAt,
-        openShift?.id ?? null,
-      );
+    if (payment) {
+      const openShift = getOpenCashShiftRow();
+      if (payment.method === "Cash" && !openShift) {
+        throw new ApiError(409, "Buka shift kas dulu sebelum menerima pembayaran tunai.", "SHIFT_REQUIRED");
+      }
+      if (payment.method === "Kasbon") {
+        db.prepare(`
+          INSERT INTO credit_accounts (id, order_id, customer_name, total, status, created_at)
+          VALUES (?, ?, ?, ?, 'Open', ?)
+        `).run(randomUUID(), orderId, input.customerName, total, createdAt);
+      } else {
+        db.prepare(`
+          INSERT INTO payments (
+            id, order_id, method, status, amount, reference, cash_received, change_amount, created_at, shift_id
+          ) VALUES (?, ?, ?, 'Paid', ?, ?, ?, ?, ?, ?)
+        `).run(
+          randomUUID(),
+          orderId,
+          payment.method,
+          total,
+          reference,
+          payment.cashReceived,
+          payment.cashReceived === null ? null : payment.cashReceived - total,
+          createdAt,
+          openShift?.id ?? null,
+        );
+      }
     }
 
     const insertOrderItem = db.prepare(`
@@ -851,12 +902,211 @@ export function createPaidOrder(user: SessionUser, rawInput: unknown): string {
       total,
       discount: discount ? { name: discount.name, amount: discountAmount } : null,
       itemCount: items.length,
-      paymentMethod: input.paymentMethod,
+      paymentMethod: payment?.method ?? null,
+      tabId: input.tabId,
     });
     return orderId;
   });
 
   return create();
+}
+
+export function createPaidOrder(user: SessionUser, rawInput: unknown): string {
+  const input = createOrderSchema.parse(rawInput) as OrderInput;
+  return placeOrder(user, {
+    idempotencyKey: input.idempotencyKey,
+    type: input.type,
+    customerName: input.customerName,
+    table: input.table,
+    discountId: input.discountId,
+    note: input.note,
+    items: input.items,
+    payment: { method: input.paymentMethod, cashReceived: input.cashReceived },
+    tabId: null,
+  });
+}
+
+function getTabOrThrow(tabId: string): TabRow {
+  const tab = db.prepare("SELECT * FROM table_tabs WHERE id = ?").get(tabId) as TabRow | undefined;
+  if (!tab) throw new ApiError(404, "Tab tidak ditemukan.", "TAB_NOT_FOUND");
+  return tab;
+}
+
+function getOpenTabOrThrow(tabId: string): TabRow {
+  const tab = getTabOrThrow(tabId);
+  if (tab.status !== "Open") throw new ApiError(409, "Tab ini sudah ditutup.", "TAB_CLOSED");
+  return tab;
+}
+
+export function openTab(user: SessionUser, rawInput: unknown): string {
+  const input = tabOpenSchema.parse(rawInput) as TabOpenInput;
+  return db.transaction(() => {
+    // A retried request with the same key returns the tab it already created.
+    const existing = db.prepare("SELECT tab_id FROM orders WHERE idempotency_key = ?")
+      .get(input.idempotencyKey) as { tab_id: string | null } | undefined;
+    if (existing) {
+      if (existing.tab_id) return existing.tab_id;
+      throw new ApiError(409, "Permintaan ini sudah diproses sebagai pesanan lain.", "IDEMPOTENCY_CONFLICT");
+    }
+
+    const table = db.prepare("SELECT name FROM dining_tables WHERE name = ? COLLATE NOCASE")
+      .get(input.table) as { name: string } | undefined;
+    if (!table) throw new ApiError(400, "Meja tidak ditemukan. Pilih meja dari denah.", "TABLE_NOT_FOUND");
+    if (getOpenTabByTable(table.name)) {
+      throw new ApiError(409, "Meja ini sudah memiliki tab terbuka.", "TAB_ALREADY_OPEN");
+    }
+    if (hasOpenDineInOrder(table.name)) {
+      throw new ApiError(409, "Meja ini masih memiliki pesanan yang belum selesai.", "TABLE_OCCUPIED");
+    }
+
+    const tabId = randomUUID();
+    db.prepare(`
+      INSERT INTO table_tabs (id, table_name, customer_name, status, opened_by, opened_at)
+      VALUES (?, ?, ?, 'Open', ?, ?)
+    `).run(tabId, table.name, input.customerName, user.id, nowIso());
+    placeOrder(user, {
+      idempotencyKey: input.idempotencyKey,
+      type: "Dine-in",
+      customerName: input.customerName,
+      table: table.name,
+      discountId: input.discountId,
+      note: input.note,
+      items: input.items,
+      payment: null,
+      tabId,
+    });
+    writeAudit(user.id, "tab.opened", "tab", tabId, { table: table.name, customerName: input.customerName });
+    return tabId;
+  })();
+}
+
+export function addTabOrder(user: SessionUser, tabId: string, rawInput: unknown): string {
+  const input = tabOrderSchema.parse(rawInput) as TabOrderInput;
+  return db.transaction(() => {
+    const tab = getOpenTabOrThrow(tabId);
+    return placeOrder(user, {
+      idempotencyKey: input.idempotencyKey,
+      type: "Dine-in",
+      customerName: tab.customer_name,
+      table: tab.table_name,
+      discountId: input.discountId,
+      note: input.note,
+      items: input.items,
+      payment: null,
+      tabId: tab.id,
+    });
+  })();
+}
+
+export function closeTab(user: SessionUser, tabId: string, rawInput: unknown) {
+  const input = tabCloseSchema.parse(rawInput) as TabCloseInput;
+  return db.transaction(() => {
+    const tab = getOpenTabOrThrow(tabId);
+    const batches = db.prepare(`
+      SELECT id, total FROM orders
+      WHERE tab_id = ? AND status != 'Cancelled'
+      ORDER BY created_at
+    `).all(tab.id) as { id: string; total: number }[];
+    const closedAt = nowIso();
+
+    if (batches.length === 0) {
+      db.prepare(`
+        UPDATE table_tabs SET status = 'Closed', closed_by = ?, closed_at = ? WHERE id = ?
+      `).run(user.id, closedAt, tab.id);
+      writeAudit(user.id, "tab.closed", "tab", tab.id, { total: 0, paymentMethod: null, batchCount: 0 });
+      return { tabId: tab.id, total: 0, paymentMethod: null, cashReceived: null, changeAmount: null };
+    }
+
+    const total = batches.reduce((sum, batch) => sum + batch.total, 0);
+    const openShift = getOpenCashShiftRow();
+    const cashReceived = input.cashReceived;
+    if (input.paymentMethod === "Cash") {
+      if (!openShift) throw new ApiError(409, "Buka shift kas dulu sebelum menerima pembayaran tunai.", "SHIFT_REQUIRED");
+      if (cashReceived === null || cashReceived < total) {
+        throw new ApiError(400, "Nominal uang tunai kurang dari total pembayaran.", "INSUFFICIENT_CASH");
+      }
+    } else if (cashReceived !== null) {
+      throw new ApiError(400, "Nominal uang hanya diisi untuk pembayaran tunai.", "INVALID_CASH_AMOUNT");
+    }
+    if (input.paymentMethod === "Kasbon") {
+      const limit = getKasbonLimit();
+      const outstanding = getCustomerOutstanding(tab.customer_name);
+      if (outstanding + total > limit) {
+        throw new ApiError(
+          409,
+          `Limit kasbon ${tab.customer_name} terlampaui. Sisa piutang ${formatRupiah(outstanding)}, limit ${formatRupiah(limit)}.`,
+          "KASBON_LIMIT_EXCEEDED",
+        );
+      }
+    }
+
+    const changeAmount = cashReceived === null ? null : cashReceived - total;
+    for (const batch of batches) {
+      if (input.paymentMethod === "Kasbon") {
+        db.prepare(`
+          INSERT INTO credit_accounts (id, order_id, customer_name, total, status, created_at)
+          VALUES (?, ?, ?, ?, 'Open', ?)
+        `).run(randomUUID(), batch.id, tab.customer_name, batch.total, closedAt);
+      } else {
+        db.prepare(`
+          INSERT INTO payments (
+            id, order_id, method, status, amount, reference, cash_received, change_amount, created_at, shift_id
+          ) VALUES (?, ?, ?, 'Paid', ?, ?, NULL, NULL, ?, ?)
+        `).run(
+          randomUUID(),
+          batch.id,
+          input.paymentMethod,
+          batch.total,
+          `SIM-${randomUUID().slice(0, 8).toUpperCase()}`,
+          closedAt,
+          openShift?.id ?? null,
+        );
+      }
+    }
+
+    db.prepare(`
+      UPDATE table_tabs
+      SET status = 'Closed', closed_by = ?, closed_at = ?, payment_method = ?,
+        cash_received = ?, change_amount = ?, shift_id = ?
+      WHERE id = ?
+    `).run(
+      user.id,
+      closedAt,
+      input.paymentMethod,
+      cashReceived,
+      changeAmount,
+      openShift?.id ?? null,
+      tab.id,
+    );
+    writeAudit(user.id, "tab.closed", "tab", tab.id, {
+      total,
+      paymentMethod: input.paymentMethod,
+      batchCount: batches.length,
+      cashReceived,
+      changeAmount,
+    });
+    return { tabId: tab.id, total, paymentMethod: input.paymentMethod, cashReceived, changeAmount };
+  })();
+}
+
+export function getTabDetail(user: SessionUser, tabId: string): TabDetail {
+  const tab = getTabOrThrow(tabId);
+  const totals = db.prepare(`
+    SELECT COALESCE(SUM(total), 0) AS total FROM orders WHERE tab_id = ? AND status != 'Cancelled'
+  `).get(tab.id) as { total: number };
+  return {
+    id: tab.id,
+    tableName: tab.table_name,
+    customerName: tab.customer_name,
+    status: tab.status,
+    openedAt: tab.opened_at,
+    closedAt: tab.closed_at,
+    paymentMethod: tab.payment_method,
+    total: totals.total,
+    cashReceived: tab.cash_received,
+    changeAmount: tab.change_amount,
+    orders: getOrders(user, undefined, tab.id),
+  };
 }
 
 function assertCanOperateStation(user: SessionUser, station: "Kitchen" | "Barista") {
@@ -1235,11 +1485,21 @@ type DiningTableRow = {
   open_order_number: string | null;
 };
 
+type OpenTabRow = {
+  id: string;
+  table_name: string;
+  customer_name: string;
+  opened_at: string;
+  order_count: number;
+  total: number;
+};
+
 export function getDiningTables(): DiningTable[] {
   const rows = db.prepare(`
     SELECT t.id, t.name, t.x, t.y,
       (SELECT o.order_number FROM orders o
         WHERE o.order_type = 'Dine-in'
+          AND o.tab_id IS NULL
           AND o.table_number = t.name COLLATE NOCASE
           AND o.status NOT IN ('Completed', 'Cancelled')
         ORDER BY o.created_at
@@ -1247,24 +1507,50 @@ export function getDiningTables(): DiningTable[] {
     FROM dining_tables t
     ORDER BY t.id
   `).all() as DiningTableRow[];
-  return rows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    x: row.x,
-    y: row.y,
-    occupied: row.open_order_number !== null,
-    openOrderNumber: row.open_order_number,
-  }));
+  const openTabs = db.prepare(`
+    SELECT t.id, t.table_name, t.customer_name, t.opened_at,
+      COUNT(CASE WHEN o.status != 'Cancelled' THEN o.id END) AS order_count,
+      COALESCE(SUM(CASE WHEN o.status != 'Cancelled' THEN o.total END), 0) AS total
+    FROM table_tabs t
+    LEFT JOIN orders o ON o.tab_id = t.id
+    WHERE t.status = 'Open'
+    GROUP BY t.id
+  `).all() as OpenTabRow[];
+  const tabByTable = new Map(openTabs.map((tab) => [tab.table_name.toLowerCase(), tab]));
+  return rows.map((row) => {
+    const tab = tabByTable.get(row.name.toLowerCase());
+    return {
+      id: row.id,
+      name: row.name,
+      x: row.x,
+      y: row.y,
+      occupied: row.open_order_number !== null || tab !== undefined,
+      openOrderNumber: row.open_order_number,
+      openTab: tab
+        ? {
+            id: tab.id,
+            customerName: tab.customer_name,
+            openedAt: tab.opened_at,
+            orderCount: tab.order_count,
+            total: tab.total,
+          }
+        : null,
+    };
+  });
 }
 
 function hasOpenDineInOrder(tableName: string) {
   return db.prepare(`
     SELECT 1 FROM orders
     WHERE order_type = 'Dine-in'
+      AND tab_id IS NULL
       AND table_number = ? COLLATE NOCASE
       AND status NOT IN ('Completed', 'Cancelled')
+    UNION ALL
+    SELECT 1 FROM table_tabs
+    WHERE table_name = ? COLLATE NOCASE AND status = 'Open'
     LIMIT 1
-  `).get(tableName) !== undefined;
+  `).get(tableName, tableName) !== undefined;
 }
 
 function defaultTablePosition(existingCount: number) {

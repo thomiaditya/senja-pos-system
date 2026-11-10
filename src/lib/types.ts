@@ -20,6 +20,28 @@ export type Product = {
   available: boolean;
 };
 
+export type OpenTabSummary = {
+  id: string;
+  customerName: string;
+  openedAt: string;
+  orderCount: number;
+  total: number;
+};
+
+export type TabDetail = {
+  id: string;
+  tableName: string;
+  customerName: string;
+  status: "Open" | "Closed";
+  openedAt: string;
+  closedAt: string | null;
+  paymentMethod: "Cash" | "QRIS" | "Debit/Kredit" | "Kasbon" | null;
+  total: number;
+  cashReceived: number | null;
+  changeAmount: number | null;
+  orders: Order[];
+};
+
 export type DiningTable = {
   id: number;
   name: string;
@@ -27,6 +49,7 @@ export type DiningTable = {
   y: number;
   occupied: boolean;
   openOrderNumber: string | null;
+  openTab: OpenTabSummary | null;
 };
 
 export type MapShapeKind = "rectangle" | "ellipse" | "wall" | "counter";
@@ -90,6 +113,7 @@ export type Order = {
   type: "Dine-in" | "Takeaway";
   customerName: string | null;
   table: string | null;
+  tabId: string | null;
   status: "Queued" | "Preparing" | "Ready for pickup" | "Completed" | "Cancelled";
   paymentMethod: "Cash" | "QRIS" | "Debit/Kredit" | "Kasbon" | null;
   paymentStatus: "Paid" | "Refunded" | null;

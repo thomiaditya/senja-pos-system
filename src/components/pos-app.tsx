@@ -119,11 +119,13 @@ import type {
   MapShapeKind,
   Order,
   OrderItem,
+  OpenTabSummary,
   PosBootstrap,
   Product,
   Receivable,
   StationTicket,
   TablePickerMode,
+  TabDetail,
   UserRole,
 } from "@/lib/types";
 
@@ -722,6 +724,11 @@ function Cashier({
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [orderHistoryOpen, setOrderHistoryOpen] = useState(false);
   const [discountId, setDiscountId] = useState<number | null>(null);
+  const [tabOpenDialogOpen, setTabOpenDialogOpen] = useState(false);
+  const [tabCloseOpen, setTabCloseOpen] = useState(false);
+  const [tabSaving, setTabSaving] = useState(false);
+  const selectedTab: OpenTabSummary | null = orderType === "Dine-in" ? selectedTable?.openTab ?? null : null;
+  const activeDiscounts = data.discounts.filter((discount) => discount.active);
   const categories = ["Semua", ...new Set(data.products.map((product) => product.category))];
   const products = data.products.filter((product) =>
     product.active
@@ -767,6 +774,60 @@ function Cashier({
     setCart((current) => current
       .map((item) => item.key === key ? { ...item, quantity: item.quantity + amount } : item)
       .filter((item) => item.quantity > 0));
+  }
+
+  function resetCart() {
+    setCart([]);
+    setNote("");
+    setDiscountId(null);
+  }
+
+  function tabItems() {
+    return cart.map((item) => ({ productId: item.productId, quantity: item.quantity, modifier: item.modifier }));
+  }
+
+  async function openTabWith(customerName: string): Promise<boolean> {
+    if (!selectedTable) return false;
+    setTabSaving(true);
+    try {
+      await requestJson<{ tab: TabDetail }>("/api/tabs", "POST", {
+        idempotencyKey: crypto.randomUUID(),
+        table: selectedTable.name,
+        customerName,
+        discountId: appliedDiscount?.id ?? null,
+        note,
+        items: tabItems(),
+      }, () => router.replace("/login"));
+      resetCart();
+      toast.success(`Tab ${selectedTable.name} dibuka untuk ${customerName}.`);
+      await onRefresh();
+      return true;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Tab tidak berhasil dibuka.");
+      return false;
+    } finally {
+      setTabSaving(false);
+    }
+  }
+
+  async function addToTab() {
+    if (!selectedTab) return;
+    setTabSaving(true);
+    try {
+      const result = await requestJson<{ order: Order }>(`/api/tabs/${selectedTab.id}/orders`, "POST", {
+        idempotencyKey: crypto.randomUUID(),
+        discountId: appliedDiscount?.id ?? null,
+        note,
+        items: tabItems(),
+      }, () => router.replace("/login"));
+      resetCart();
+      toast.success(`Pesanan ${result.order.orderNumber} ditambahkan ke tab ${selectedTab.customerName}.`);
+      await onRefresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Pesanan tidak berhasil ditambahkan ke tab.");
+    } finally {
+      setTabSaving(false);
+    }
   }
 
   async function checkout(payment: CheckoutPayment): Promise<boolean> {
@@ -943,7 +1004,10 @@ function Cashier({
                       {data.tablePickerMode === "cards" ? "Pilih salah satu meja di atas." : "Klik meja di denah untuk memilihnya."}
                     </p>
                   )}
-                  {selectedTable?.occupied && (
+                  {selectedTab && (
+                    <p className="text-sm text-muted-foreground">Tab aktif atas nama {selectedTab.customerName}. Pesanan tambahan masuk ke tab ini.</p>
+                  )}
+                  {selectedTable?.occupied && !selectedTab && (
                     <p className="text-sm text-muted-foreground">Meja ini sedang terisi. Pesanan tambahan tetap bisa dibuat.</p>
                   )}
                 </>
@@ -1014,14 +1078,92 @@ function Cashier({
               <Separator className="my-1" />
               <div className="flex justify-between text-base font-semibold"><span>Total</span><span className="tabular-nums">{money(total)}</span></div>
             </div>
-            <Button
-              size="lg"
-              data-tour="cashier-checkout"
-              disabled={saving || pending || cart.length === 0 || (orderType === "Dine-in" && !selectedTable)}
-              onClick={() => setCheckoutOpen(true)}
-            >
-              Lanjut ke pembayaran <ArrowRight data-icon="inline-end" />
-            </Button>
+            {orderType === "Dine-in" && selectedTable && (
+              <div className="flex flex-col gap-3 rounded-lg border p-3" data-tour="cashier-tab">
+                {selectedTab && (
+                  <div className="flex flex-col gap-1 text-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold">Tab {selectedTable.name} · {selectedTab.customerName}</span>
+                      <strong className="tabular-nums">{money(selectedTab.total)}</strong>
+                    </div>
+                    <span className="text-muted-foreground">{selectedTab.orderCount} batch pesanan belum dibayar</span>
+                  </div>
+                )}
+                {activeDiscounts.length > 0 && (
+                  <div className="flex flex-col gap-2">
+                    <span className="text-sm font-medium">Diskon pesanan ini</span>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={appliedDiscount === null ? "default" : "outline"}
+                        className="rounded-full"
+                        aria-pressed={appliedDiscount === null}
+                        onClick={() => setDiscountId(null)}
+                      >
+                        Tanpa diskon
+                      </Button>
+                      {activeDiscounts.map((discount) => {
+                        const eligible = isDiscountEligible(discount, subtotal);
+                        return (
+                          <Button
+                            type="button"
+                            key={discount.id}
+                            size="sm"
+                            variant={appliedDiscount?.id === discount.id ? "default" : "outline"}
+                            className="rounded-full"
+                            aria-pressed={appliedDiscount?.id === discount.id}
+                            disabled={!eligible}
+                            onClick={() => setDiscountId(discount.id)}
+                          >
+                            {discount.name} · {discount.kind === "Percent" ? `${discount.value}%` : money(discount.value)}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {selectedTab ? (
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      size="lg"
+                      disabled={tabSaving || pending || cart.length === 0}
+                      onClick={addToTab}
+                    >
+                      Tambah ke tab <Plus data-icon="inline-end" />
+                    </Button>
+                    <Button variant="outline" onClick={() => setTabCloseOpen(true)} disabled={tabSaving || pending}>
+                      Lihat tab & bayar
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      variant="outline"
+                      disabled={tabSaving || pending || saving || cart.length === 0 || selectedTable.occupied}
+                      onClick={() => setTabOpenDialogOpen(true)}
+                    >
+                      <Receipt data-icon="inline-start" /> Buka tab meja
+                    </Button>
+                    {selectedTable.occupied ? (
+                      <p className="text-xs text-muted-foreground">Meja sudah terisi pesanan biasa. Selesaikan dulu sebelum membuka tab.</p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Tab dibayar sekali saat ditutup. Nama pelanggan wajib diisi.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            {!selectedTab && (
+              <Button
+                size="lg"
+                data-tour="cashier-checkout"
+                disabled={saving || pending || cart.length === 0 || (orderType === "Dine-in" && !selectedTable)}
+                onClick={() => setCheckoutOpen(true)}
+              >
+                Lanjut ke pembayaran <ArrowRight data-icon="inline-end" />
+              </Button>
+            )}
           </div>
           </CardContent>
         </Card>
@@ -1053,7 +1195,304 @@ function Cashier({
           }}
         />
       )}
+      {tabOpenDialogOpen && selectedTable && (
+        <OpenTabDialog
+          tableName={selectedTable.name}
+          itemCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+          total={total}
+          customers={data.customers}
+          saving={tabSaving}
+          onClose={() => setTabOpenDialogOpen(false)}
+          onSubmit={async (customerName) => {
+            const ok = await openTabWith(customerName);
+            return ok;
+          }}
+        />
+      )}
+      {tabCloseOpen && selectedTab && selectedTable && (
+        <TabCloseDialog
+          tab={selectedTab}
+          tableName={selectedTable.name}
+          isAdmin={data.user.role === "admin"}
+          receivables={data.receivables}
+          kasbonLimit={data.kasbonLimit}
+          cashShiftOpen={data.cashShift !== null}
+          onChanged={onRefresh}
+          onClose={() => setTabCloseOpen(false)}
+        />
+      )}
     </div>
+  );
+}
+
+function OpenTabDialog({
+  tableName,
+  itemCount,
+  total,
+  customers,
+  saving,
+  onClose,
+  onSubmit,
+}: {
+  tableName: string;
+  itemCount: number;
+  total: number;
+  customers: CustomerSuggestion[];
+  saving: boolean;
+  onClose: () => void;
+  onSubmit: (customerName: string) => Promise<boolean>;
+}) {
+  const [customerName, setCustomerName] = useState("");
+  const customerListId = useId();
+  const trimmedCustomerName = customerName.trim();
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (saving || trimmedCustomerName === "") return;
+    if (await onSubmit(trimmedCustomerName)) onClose();
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => {
+      if (!open && !saving) onClose();
+    }}>
+      <DialogContent className="sm:max-w-md">
+        <form className="flex flex-col gap-4" onSubmit={submit}>
+          <DialogHeader>
+            <DialogTitle>Buka tab {tableName}</DialogTitle>
+            <DialogDescription>{itemCount} item · {money(total)}. Tab dibayar sekali saat ditutup.</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="tab-customer">Nama pelanggan</Label>
+            <Input
+              id="tab-customer"
+              list={customerListId}
+              value={customerName}
+              placeholder="Wajib diisi"
+              autoFocus
+              onChange={(event) => setCustomerName(event.target.value)}
+            />
+            <datalist id={customerListId}>
+              {customers.map((customer) => <option key={customer.name} value={customer.name} />)}
+            </datalist>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose} disabled={saving}>Batal</Button>
+            <Button type="submit" disabled={saving || trimmedCustomerName === ""}>{saving ? "Membuka..." : "Buka tab"}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function TabCloseDialog({
+  tab,
+  tableName,
+  isAdmin,
+  receivables,
+  kasbonLimit,
+  cashShiftOpen,
+  onChanged,
+  onClose,
+}: {
+  tab: OpenTabSummary;
+  tableName: string;
+  isAdmin: boolean;
+  receivables: Receivable[];
+  kasbonLimit: number;
+  cashShiftOpen: boolean;
+  onChanged: () => Promise<unknown>;
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const [detail, setDetail] = useState<TabDetail | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [method, setMethod] = useState<PaymentMethod>("Cash");
+  const [cashInput, setCashInput] = useState("");
+  const total = detail?.total ?? tab.total;
+  const cashReceived = Number(cashInput || 0);
+  const isCash = method === "Cash";
+  const isKasbon = method === "Kasbon";
+  const cashShort = isCash && cashReceived < total;
+  const cashBlocked = isCash && !cashShiftOpen;
+  // Same kasbon rule as CheckoutDialog and the server: outstanding kasbon plus this tab must not exceed the limit.
+  const customerOutstanding = receivables
+    .filter((receivable) => receivable.customerName.toLowerCase() === tab.customerName.toLowerCase())
+    .reduce((sum, receivable) => sum + receivable.outstanding, 0);
+  const kasbonProjected = customerOutstanding + total;
+  const kasbonOverLimit = isKasbon && kasbonProjected > kasbonLimit;
+  const canClose = detail !== null && !busy && !cashShort && !cashBlocked && !kasbonOverLimit;
+
+  useEffect(() => {
+    let cancelled = false;
+    requestJson<{ tab: TabDetail }>(`/api/tabs/${tab.id}`, "GET", undefined, () => router.replace("/login"))
+      .then((result) => {
+        if (cancelled) return;
+        setDetail(result.tab);
+        setLoadError(null);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setLoadError(error instanceof Error ? error.message : "Tab tidak bisa dimuat.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tab.id, tab.total, tab.orderCount, reloadKey, router]);
+
+  async function cancelBatch(order: Order) {
+    const reason = window.prompt(`Alasan pembatalan ${order.orderNumber}:`);
+    if (!reason?.trim()) return;
+    setBusy(true);
+    try {
+      await requestJson(`/api/orders/${order.id}/action`, "POST", { action: "cancel", reason: reason.trim() }, () => router.replace("/login"));
+      toast.success(`${order.orderNumber} dibatalkan.`);
+      setReloadKey((key) => key + 1);
+      await onChanged();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Batch tidak berhasil dibatalkan.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function closeTab() {
+    if (!canClose) return;
+    setBusy(true);
+    try {
+      const result = await requestJson<{ drawer?: { opened: boolean; warning: string | null } | null }>(
+        `/api/tabs/${tab.id}/close`,
+        "POST",
+        { paymentMethod: method, cashReceived: isCash ? cashReceived : null },
+        () => router.replace("/login"),
+      );
+      if (result.drawer?.warning) {
+        toast.warning(`Tab ditutup, tetapi laci tidak terbuka: ${result.drawer.warning}`);
+      } else {
+        toast.success(isKasbon ? `Tab ${tableName} dicatat sebagai kasbon ${tab.customerName}.` : `Tab ${tableName} ditutup dan dibayar.`);
+      }
+      await onChanged();
+      onClose();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Tab tidak berhasil ditutup.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => {
+      if (!open && !busy) onClose();
+    }}>
+      <DialogContent className="flex flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl" showCloseButton={false}>
+        <div className="flex max-h-[90vh] flex-col">
+          <DialogHeader className="flex-row items-center justify-between gap-4 border-b p-5">
+            <div className="flex flex-col gap-0.5">
+              <DialogTitle className="text-lg">Tab {tableName} · {tab.customerName}</DialogTitle>
+              <DialogDescription>{tab.orderCount} batch · dibuka {dateTime(tab.openedAt)}</DialogDescription>
+            </div>
+            <Button type="button" variant="ghost" size="icon" onClick={onClose} disabled={busy} aria-label="Tutup"><X /></Button>
+          </DialogHeader>
+          <div className="grid min-h-0 gap-5 overflow-y-auto p-5 sm:grid-cols-2">
+            <div className="flex min-h-0 flex-col gap-3">
+              <span className="text-sm font-medium">Batch pesanan</span>
+              {loadError && <Alert variant="destructive"><AlertDescription>{loadError}</AlertDescription></Alert>}
+              {!detail && !loadError && <p className="text-sm text-muted-foreground">Memuat tab...</p>}
+              {detail?.orders.length === 0 && <p className="text-sm text-muted-foreground">Belum ada batch pesanan.</p>}
+              {detail?.orders.map((order) => {
+                const cancelled = order.status === "Cancelled";
+                return (
+                  <div key={order.id} className={cn("flex flex-col gap-2 rounded-lg border p-3", cancelled && "opacity-60")}>
+                    <div className="flex items-center justify-between gap-2 text-sm">
+                      <span className="font-medium">{order.orderNumber} · {dateTime(order.createdAt)}</span>
+                      <Badge variant={cancelled ? "secondary" : "outline"}>{cancelled ? "Dibatalkan" : order.status}</Badge>
+                    </div>
+                    <ul className="flex flex-col gap-1 text-sm">
+                      {order.items.map((item) => (
+                        <li key={item.id} className="flex justify-between gap-2">
+                          <span>{item.quantity}× {item.name}{item.modifier ? ` (${item.modifier})` : ""}</span>
+                          <span className="tabular-nums text-muted-foreground">{money(item.unitPrice * item.quantity)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {isAdmin && !cancelled && (
+                      <Button type="button" variant="ghost" size="sm" className="self-start text-destructive" disabled={busy} onClick={() => cancelBatch(order)}>
+                        Batalkan batch
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between rounded-lg bg-muted p-3">
+                <span>Total tab</span>
+                <strong className="text-lg tabular-nums">{money(total)}</strong>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {PAYMENT_OPTIONS.map((option) => {
+                  const Icon = option.icon;
+                  return (
+                    <Button
+                      type="button"
+                      key={option.method}
+                      variant={method === option.method ? "default" : "outline"}
+                      aria-pressed={method === option.method}
+                      className="h-auto justify-start gap-2 py-2.5"
+                      onClick={() => setMethod(option.method)}
+                    >
+                      <Icon />
+                      {option.method}
+                    </Button>
+                  );
+                })}
+              </div>
+              {isCash && (
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="tab-cash">Uang diterima</Label>
+                  <RupiahInput
+                    id="tab-cash"
+                    className="h-12 text-lg tabular-nums"
+                    placeholder="Masukkan nominal"
+                    value={cashInput}
+                    onValueChange={setCashInput}
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" size="sm" variant="outline" className="rounded-full" onClick={() => setCashInput(String(total))}>Uang pas</Button>
+                    {CASH_QUICK_AMOUNTS.map((amount) => (
+                      <Button key={amount} type="button" size="sm" variant="outline" className="rounded-full" onClick={() => setCashInput(String(amount))}>{money(amount)}</Button>
+                    ))}
+                  </div>
+                  {cashShort && cashInput !== "" && <p className="text-sm font-medium text-destructive">Uang kurang {money(total - cashReceived)}</p>}
+                  {!cashShort && (
+                    <div className="flex items-center justify-between rounded-lg bg-primary/10 p-3 text-primary">
+                      <span>Kembalian</span>
+                      <strong className="tabular-nums">{money(cashReceived - total)}</strong>
+                    </div>
+                  )}
+                </div>
+              )}
+              {isKasbon && (
+                <div className="flex flex-col gap-2 text-sm">
+                  <div className="flex justify-between gap-2"><span className="text-muted-foreground">Piutang setelah tutup tab</span><strong className="tabular-nums">{money(kasbonProjected)}</strong></div>
+                  <div className="flex justify-between gap-2"><span className="text-muted-foreground">Batas kasbon</span><span className="tabular-nums">{money(kasbonLimit)}</span></div>
+                  {kasbonOverLimit && <Alert variant="destructive"><AlertDescription>Kasbon melewati batas. Lunasi kasbon lama dulu atau pilih metode lain.</AlertDescription></Alert>}
+                </div>
+              )}
+              {cashBlocked && <Alert variant="destructive"><AlertDescription>Shift kas belum dibuka. Buka shift untuk menerima pembayaran tunai.</AlertDescription></Alert>}
+              <DialogFooter className="m-0 border-t-0 p-0">
+                <Button type="button" variant="outline" onClick={onClose} disabled={busy}>Tutup</Button>
+                <Button type="button" disabled={!canClose} onClick={closeTab}>
+                  {busy ? "Memproses..." : "Tutup tab & bayar"}
+                </Button>
+              </DialogFooter>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -3252,6 +3691,7 @@ function TableCardPicker({ tables, selectedId, onSelect }: { tables: DiningTable
           >
             <span className="font-medium">{table.name}</span>
             <Badge variant={table.occupied ? "secondary" : "outline"}>{table.occupied ? "Terisi" : "Kosong"}</Badge>
+            {table.openTab && <span className="max-w-full truncate text-xs text-muted-foreground">Tab {table.openTab.customerName}</span>}
           </button>
         );
       })}
