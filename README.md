@@ -4,8 +4,29 @@ Aplikasi POS satu outlet untuk kasir, produksi Kitchen/Barista, persediaan bahan
 
 ## Persyaratan
 
-- Node.js 20.16 atau lebih baru
-- pnpm 12 atau lebih baru
+- Node.js 22.x
+- pnpm 12 atau lebih baru (versi mengikuti `packageManager` di `package.json`)
+
+## Instalasi otomatis di Windows
+
+Untuk laptop Windows yang belum memiliki Node.js atau Git. Installer memasang Git (lewat winget bila tersedia), mengunduh Node.js 22 dan pnpm ke folder `.tools` di dalam proyek, lalu menjalankan install, setup database, dan build. Node.js yang mungkin sudah ada di laptop tidak diubah.
+
+Cara 1, dari PowerShell (tanpa perlu clone terlebih dahulu):
+
+```powershell
+irm https://raw.githubusercontent.com/thomiaditya/senja-pos-system/main/scripts/windows/install.ps1 -OutFile install.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+Cara 2, jika repo sudah di-clone: klik ganda `scripts\windows\install.bat`. Installer memasang folder repo tempat file itu berada.
+
+Setelah selesai, jalankan server lewat shortcut **Kopi Senja POS** di desktop, atau klik ganda `scripts\windows\start-server.bat`. Jalankan installer ulang untuk memperbarui aplikasi; data, `.env.local`, dan database tetap dipertahankan.
+
+Catatan:
+- Instalasi default berada di `%USERPROFILE%\KopiSenja` (cara 1). Ubah dengan `-InstallDir`.
+- Windows dapat meminta izin UAC saat memasang Git. Jalankan PowerShell sebagai Administrator agar installer juga membuka firewall port 3000. Pastikan jaringan Wi-Fi diset sebagai **Private**.
+- Untuk Tanya AI, isi `GEMINI_API_KEY` di `.env.local` setelah instalasi. Fitur ini opsional.
+- Installer ini belum diuji di perangkat Windows nyata. Lakukan uji coba di laptop target sebelum dipakai untuk produksi. Tahap build bisa memakan beberapa menit di laptop spek rendah.
 
 ## Menjalankan aplikasi
 

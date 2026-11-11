@@ -36,6 +36,9 @@ yarn-error.log*
 # local SQLite data and backups
 /data/
 
+# portable Node.js and pnpm installed by scripts/windows/install.ps1
+/.tools/
+
 # vercel
 .vercel
 
