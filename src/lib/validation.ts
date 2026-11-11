@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PRINTER_BAUD_RATES } from "@/lib/types";
+import { PRINTER_BAUD_RATES, RECEIPT_FONT_SIZES } from "@/lib/types";
 
 export const loginSchema = z.object({
   username: z.string().trim().min(1).max(64),
@@ -190,6 +190,20 @@ export const settingsUpdateSchema = z
     receiptWidthMm: z.union([z.literal(58), z.literal(80)]).optional(),
     taxRateBasisPoints: z.number().int().min(0).max(3000).optional(),
     receiptFooter: z.string().trim().max(120).optional(),
+    receiptDesign: z
+      .object({
+        headerText: z.string().trim().max(120),
+        fontSize: z.enum(RECEIPT_FONT_SIZES),
+        showLogo: z.boolean(),
+        showCustomer: z.boolean(),
+        showDiscount: z.boolean(),
+        showTax: z.boolean(),
+        showCashChange: z.boolean(),
+        showNote: z.boolean(),
+        showPaymentRef: z.boolean(),
+      })
+      .partial()
+      .optional(),
     printerMode: z.enum(["off", "network", "system", "serial"]).optional(),
     printerHost: z.string().trim().max(253).regex(/^[A-Za-z0-9.-]*$/, "Alamat printer hanya boleh berisi huruf, angka, titik, dan tanda minus.").optional(),
     printerPort: z.number().int().min(1).max(65535).optional(),

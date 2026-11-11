@@ -109,7 +109,7 @@ import {
   type QueueLevel,
   unlockQueueAudio,
 } from "@/lib/queue-alarm";
-import { PRINTER_BAUD_RATES, type PrinterSerialPort } from "@/lib/types";
+import { PRINTER_BAUD_RATES, RECEIPT_FONT_SIZES, type PrinterSerialPort, type ReceiptDesign, type ReceiptFontSize, type ReceiptToggle } from "@/lib/types";
 import { calculateDiscountAmount, calculateOrderTotals, isDiscountEligible } from "@/lib/pricing";
 import type {
   CashShift,
@@ -123,7 +123,6 @@ import type {
   MapShape,
   MapShapeKind,
   Order,
-  OrderItem,
   OpenTabSummary,
   PendingCancelRequest,
   PosBootstrap,
@@ -3481,6 +3480,55 @@ function ReceiptLogo({ src }: { src: string | null }) {
   return <div className="receipt-logo">{src ? <img src={src} alt="" /> : "☕"}</div>;
 }
 
+function ReceiptPaper({
+  order,
+  design,
+  width,
+  outletName,
+  logoUrl,
+  footer,
+}: {
+  order: Order;
+  design: ReceiptDesign;
+  width: 58 | 80;
+  outletName: string;
+  logoUrl: string | null;
+  footer: string;
+}) {
+  const receiptClass = width === 58 ? "receipt-58" : "receipt-80";
+  return (
+    <div className={`receipt-paper ${receiptClass} receipt-font-${design.fontSize}`}>
+      {design.showLogo && <ReceiptLogo src={logoUrl} />}
+      <h3>{outletName}</h3>
+      {design.headerText && <p>{design.headerText}</p>}
+      <p>POS · Bukti pembayaran simulasi</p>
+      <div className="receipt-dash" />
+      <div className="receipt-meta"><span>No. pesanan</span><strong>{order.orderNumber}</strong></div>
+      <div className="receipt-meta"><span>Waktu</span><strong>{fullDate(order.createdAt)} {dateTime(order.createdAt)}</strong></div>
+      <div className="receipt-meta"><span>Jenis</span><strong>{order.type}{order.table ? ` · ${order.table}` : ""}</strong></div>
+      {design.showCustomer && order.customerName && <div className="receipt-meta"><span>Pelanggan</span><strong>{order.customerName}</strong></div>}
+      <div className="receipt-dash" />
+      {order.items.map((item) => (
+        <div className="receipt-line" key={item.id}>
+          <div><span>{item.quantity}× {item.name}</span><strong>{money(item.unitPrice * item.quantity)}</strong></div>
+          {item.modifier && <small>{item.modifier}</small>}
+        </div>
+      ))}
+      {design.showNote && order.note && <p className="receipt-note">Catatan: {order.note}</p>}
+      <div className="receipt-dash" />
+      <div className="receipt-meta"><span>Subtotal</span><span>{money(order.subtotal ?? 0)}</span></div>
+      {design.showDiscount && (order.discountAmount ?? 0) > 0 && <div className="receipt-meta"><span>Diskon {order.discountName ?? ""}</span><span>-{money(order.discountAmount ?? 0)}</span></div>}
+      {design.showTax && <div className="receipt-meta"><span>Pajak</span><span>{money(order.tax ?? 0)}</span></div>}
+      <div className="receipt-meta receipt-total"><strong>TOTAL</strong><strong>{money(order.total ?? 0)}</strong></div>
+      <div className="receipt-meta"><span>Pembayaran</span><strong>{order.paymentMethod ?? "-"}</strong></div>
+      {design.showCashChange && order.cashReceived !== null && <div className="receipt-meta"><span>Tunai / kembalian</span><span>{money(order.cashReceived)} / {money(order.changeAmount ?? 0)}</span></div>}
+      <div className="receipt-dash" />
+      <p className="receipt-footer">{footer}</p>
+      {design.showPaymentRef && <p className="receipt-ref">Ref. {order.paymentReference ?? "-"}</p>}
+    </div>
+  );
+}
+
 function ImageUploadControls({
   hasImage,
   uploadLabel,
@@ -3729,13 +3777,6 @@ function SettingsScreen({
   pending: boolean;
   runAction: RunAction;
 }) {
-  const [width, setWidth] = useState<58 | 80>(data.receiptWidthMm);
-  function saveReceipt() {
-    return runAction(
-      () => requestJson("/api/settings", "PATCH", { receiptWidthMm: width }),
-      "Pengaturan struk berhasil disimpan.",
-    );
-  }
   return (
     <div className="flex flex-col gap-6">
       <SectionTitle eyebrow="KONFIGURASI OUTLET" title="Pengaturan" />
@@ -3743,31 +3784,7 @@ function SettingsScreen({
         <StoreProfileCard data={data} pending={pending} runAction={runAction} />
         <AccountCard data={data} pending={pending} runAction={runAction} />
         <AccountsCard data={data} pending={pending} runAction={runAction} />
-        <Card data-tour="settings-printing">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Printer className="size-5 text-muted-foreground" /> Pencetakan nota</CardTitle>
-            <CardDescription>Atur lebar kertas printer thermal. Lebar ini juga dipakai saat cetak langsung dari server.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <Label>Lebar kertas</Label>
-              <Select value={String(width)} onValueChange={(next) => setWidth(Number(next ?? 80) as 58 | 80)}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="58">58 mm · compact</SelectItem>
-                  <SelectItem value="80">80 mm · standar</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="mx-auto flex flex-col items-center gap-1 rounded-md border border-dashed bg-muted/40 p-4 text-center text-sm" style={{ width: width === 58 ? "58%" : "80%" }}>
-              <span className="font-semibold">{data.outletName}</span>
-              <span className="text-muted-foreground">Preview lebar {width} mm</span>
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button onClick={saveReceipt} disabled={pending}>Simpan pengaturan <ArrowRight data-icon="inline-end" /></Button>
-          </CardFooter>
-        </Card>
+        <ReceiptPrintingCard data={data} pending={pending} runAction={runAction} />
         <ExpenseApprovalCard data={data} pending={pending} runAction={runAction} />
         <KasbonLimitCard data={data} pending={pending} runAction={runAction} />
         <TablePickerCard data={data} pending={pending} runAction={runAction} />
@@ -4137,6 +4154,161 @@ function PrinterCard({ data, pending, runAction }: { data: PosBootstrap; pending
           <Button type="submit" disabled={pending}>Simpan printer <ArrowRight data-icon="inline-end" /></Button>
         </CardFooter>
       </form>
+    </Card>
+  );
+}
+
+const RECEIPT_TOGGLE_OPTIONS: { field: ReceiptToggle; label: string; description: string }[] = [
+  { field: "showLogo", label: "Logo toko", description: "Tampil di preview dan cetak browser. Printer thermal tidak mencetak logo." },
+  { field: "showCustomer", label: "Nama pelanggan", description: "Nama pelanggan di bagian informasi pesanan." },
+  { field: "showDiscount", label: "Diskon", description: "Baris diskon dan potongan. Jika dimatikan, nota tidak menampilkan potongan." },
+  { field: "showTax", label: "Pajak", description: "Baris pajak pada total." },
+  { field: "showCashChange", label: "Tunai dan kembalian", description: "Nominal uang tunai dan kembalian." },
+  { field: "showNote", label: "Catatan pesanan", description: "Catatan pesanan dari kasir atau pelanggan." },
+  { field: "showPaymentRef", label: "Kode referensi", description: "Nomor referensi pembayaran di bagian bawah nota." },
+];
+
+const RECEIPT_FONT_LABELS: Record<ReceiptFontSize, string> = { kecil: "Kecil", normal: "Normal", besar: "Besar" };
+
+const RECEIPT_SAMPLE_ORDER: Order = {
+  id: "receipt-sample",
+  orderNumber: "SNJ-0001",
+  createdAt: "2025-01-01T03:30:00.000Z",
+  type: "Dine-in",
+  customerName: "Rina",
+  table: "M2",
+  tabId: null,
+  status: "Completed",
+  paymentMethod: "Cash",
+  paymentStatus: "Paid",
+  paymentReference: "CASH-0001",
+  cashReceived: 50000,
+  changeAmount: 500,
+  credit: null,
+  subtotal: 50000,
+  discountName: "Promo 10%",
+  discountKind: "Percent",
+  discountValue: 10,
+  discountAmount: 5000,
+  tax: 4500,
+  total: 49500,
+  note: "Gula sedikit",
+  cancelReason: null,
+  cancelRequest: null,
+  collectedAt: null,
+  items: [
+    { id: "sample-1", productId: 1, name: "Kopi Susu Senja", quantity: 2, unitPrice: 18000, modifier: "Less gula", station: "Barista" },
+    { id: "sample-2", productId: 2, name: "Roti Bakar", quantity: 1, unitPrice: 14000, modifier: "", station: "Kitchen" },
+  ],
+  tickets: [],
+};
+
+const noopSubscribe = () => () => {};
+
+function ReceiptPrintingCard({ data, pending, runAction }: { data: PosBootstrap; pending: boolean; runAction: RunAction }) {
+  const [width, setWidth] = useState<58 | 80>(data.receiptWidthMm);
+  const [design, setDesign] = useState<ReceiptDesign>(data.receiptDesign);
+  // Preview memakai format tanggal lokal, jadi hanya dirender setelah hydration agar tidak tidak sinkron dengan server.
+  const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
+
+  function setToggle(field: ReceiptToggle, value: boolean) {
+    setDesign((current) => ({ ...current, [field]: value }));
+  }
+
+  function saveReceipt() {
+    return runAction(
+      () => requestJson("/api/settings", "PATCH", {
+        receiptWidthMm: width,
+        receiptDesign: { ...design, headerText: design.headerText.trim() },
+      }),
+      "Pengaturan nota berhasil disimpan.",
+    );
+  }
+
+  return (
+    <Card data-tour="settings-printing">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><Printer className="size-5 text-muted-foreground" /> Pencetakan nota</CardTitle>
+        <CardDescription>Atur lebar kertas dan isi nota thermal. Pengaturan ini juga dipakai saat cetak langsung dari server.</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-6 lg:grid-cols-2">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label>Lebar kertas</Label>
+            <Select value={String(width)} onValueChange={(next) => setWidth(Number(next ?? 80) as 58 | 80)}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="58">58 mm · compact</SelectItem>
+                <SelectItem value="80">80 mm · standar</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label>Ukuran font</Label>
+            <Select
+              value={design.fontSize}
+              onValueChange={(next) => {
+                const fontSize = RECEIPT_FONT_SIZES.find((option) => option === next);
+                if (fontSize) setDesign((current) => ({ ...current, fontSize }));
+              }}
+            >
+              <SelectTrigger className="w-full"><SelectValue>{RECEIPT_FONT_LABELS[design.fontSize]}</SelectValue></SelectTrigger>
+              <SelectContent>
+                {RECEIPT_FONT_SIZES.map((option) => (
+                  <SelectItem key={option} value={option}>{RECEIPT_FONT_LABELS[option]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="receipt-header-text">Teks header tambahan</Label>
+            <Input
+              id="receipt-header-text"
+              value={design.headerText}
+              maxLength={120}
+              placeholder="Contoh: Jl. Senja No. 1 · 0812-0000-0000"
+              onChange={(event) => setDesign((current) => ({ ...current, headerText: event.target.value }))}
+            />
+            <p className="text-xs text-muted-foreground">Dicetak di bawah nama outlet. Kosongkan jika tidak perlu.</p>
+          </div>
+          <div className="flex flex-col gap-3">
+            <Label>Isi nota</Label>
+            {RECEIPT_TOGGLE_OPTIONS.map(({ field, label, description }) => (
+              <div key={field} className="flex items-start justify-between gap-3">
+                <div className="flex flex-col">
+                  <Label htmlFor={`receipt-${field}`}>{label}</Label>
+                  <span className="text-xs text-muted-foreground">{description}</span>
+                </div>
+                <Switch
+                  id={`receipt-${field}`}
+                  checked={design[field]}
+                  disabled={pending}
+                  onCheckedChange={(checked) => setToggle(field, checked === true)}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label>Preview nota</Label>
+          <div className="flex justify-center overflow-x-auto rounded-md border border-dashed bg-muted/40 p-4">
+            {mounted && (
+              <ReceiptPaper
+                order={RECEIPT_SAMPLE_ORDER}
+                design={design}
+                width={width}
+                outletName={data.outletName}
+                logoUrl={data.outletLogoUrl}
+                footer={data.receiptFooter}
+              />
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">Data contoh, bukan transaksi sungguhan.</p>
+        </div>
+      </CardContent>
+      <CardFooter>
+        <Button onClick={saveReceipt} disabled={pending}>Simpan pengaturan <ArrowRight data-icon="inline-end" /></Button>
+      </CardFooter>
     </Card>
   );
 }
@@ -4935,12 +5107,6 @@ function PrintDialog({ order, data, onClose }: { order: Order; data: PosBootstra
       setSending(false);
     }
   }
-  const formatReceiptLine = (item: OrderItem) => (
-    <div className="receipt-line" key={item.id}>
-      <div><span>{item.quantity}× {item.name}</span><strong>{money(item.unitPrice * item.quantity)}</strong></div>
-      {item.modifier && <small>{item.modifier}</small>}
-    </div>
-  );
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" role="presentation" onMouseDown={(event) => {
       if (event.target === event.currentTarget) onClose();
@@ -4957,29 +5123,7 @@ function PrintDialog({ order, data, onClose }: { order: Order; data: PosBootstra
           <Button variant="ghost" size="icon" onClick={onClose} aria-label="Tutup"><X /></Button>
         </div>
         <div className="print-documents flex-1 overflow-y-auto bg-muted/40 p-5">
-          <div className={`receipt-paper ${receiptClass}`}>
-            <ReceiptLogo src={data.outletLogoUrl} />
-            <h3>{data.outletName}</h3>
-            <p>POS · Bukti pembayaran simulasi</p>
-            <div className="receipt-dash" />
-            <div className="receipt-meta"><span>No. pesanan</span><strong>{order.orderNumber}</strong></div>
-            <div className="receipt-meta"><span>Waktu</span><strong>{fullDate(order.createdAt)} {dateTime(order.createdAt)}</strong></div>
-            <div className="receipt-meta"><span>Jenis</span><strong>{order.type}{order.table ? ` · ${order.table}` : ""}</strong></div>
-            {order.customerName && <div className="receipt-meta"><span>Pelanggan</span><strong>{order.customerName}</strong></div>}
-            <div className="receipt-dash" />
-            {order.items.map(formatReceiptLine)}
-            {order.note && <p className="receipt-note">Catatan: {order.note}</p>}
-            <div className="receipt-dash" />
-            <div className="receipt-meta"><span>Subtotal</span><span>{money(order.subtotal ?? 0)}</span></div>
-            {(order.discountAmount ?? 0) > 0 && <div className="receipt-meta"><span>Diskon {order.discountName ?? ""}</span><span>-{money(order.discountAmount ?? 0)}</span></div>}
-            <div className="receipt-meta"><span>Pajak</span><span>{money(order.tax ?? 0)}</span></div>
-            <div className="receipt-meta receipt-total"><strong>TOTAL</strong><strong>{money(order.total ?? 0)}</strong></div>
-            <div className="receipt-meta"><span>Pembayaran</span><strong>{order.paymentMethod ?? "-"}</strong></div>
-            {order.cashReceived !== null && <div className="receipt-meta"><span>Tunai / kembalian</span><span>{money(order.cashReceived)} / {money(order.changeAmount ?? 0)}</span></div>}
-            <div className="receipt-dash" />
-            <p className="receipt-footer">{data.receiptFooter}</p>
-            <p className="receipt-ref">Ref. {order.paymentReference ?? "-"}</p>
-          </div>
+          <ReceiptPaper order={order} design={data.receiptDesign} width={data.receiptWidthMm} outletName={data.outletName} logoUrl={data.outletLogoUrl} footer={data.receiptFooter} />
           {order.tickets.map((ticket) => (
             <div className={`receipt-paper print-ticket ${receiptClass}`} key={ticket.id}>
               <div className="ticket-print-label">{ticket.station === "Kitchen" ? "🍳" : "☕"} TIKET {ticket.station.toUpperCase()}</div>
@@ -5033,26 +5177,7 @@ function PrintDialog({ order, data, onClose }: { order: Order; data: PosBootstra
         </div>
       </div>
       <div id="print-area" className="print-area">
-        <div className={`receipt-paper ${receiptClass}`}>
-          <ReceiptLogo src={data.outletLogoUrl} /><h3>{data.outletName}</h3><p>POS · Bukti pembayaran simulasi</p>
-          <div className="receipt-dash" />
-          <div className="receipt-meta"><span>No. pesanan</span><strong>{order.orderNumber}</strong></div>
-          <div className="receipt-meta"><span>Waktu</span><strong>{fullDate(order.createdAt)} {dateTime(order.createdAt)}</strong></div>
-          <div className="receipt-meta"><span>Jenis</span><strong>{order.type}{order.table ? ` · ${order.table}` : ""}</strong></div>
-          {order.customerName && <div className="receipt-meta"><span>Pelanggan</span><strong>{order.customerName}</strong></div>}
-          <div className="receipt-dash" />
-          {order.items.map(formatReceiptLine)}
-          {order.note && <p className="receipt-note">Catatan: {order.note}</p>}
-          <div className="receipt-dash" />
-          <div className="receipt-meta"><span>Subtotal</span><span>{money(order.subtotal ?? 0)}</span></div>
-          {(order.discountAmount ?? 0) > 0 && <div className="receipt-meta"><span>Diskon {order.discountName ?? ""}</span><span>-{money(order.discountAmount ?? 0)}</span></div>}
-          <div className="receipt-meta"><span>Pajak</span><span>{money(order.tax ?? 0)}</span></div>
-          <div className="receipt-meta receipt-total"><strong>TOTAL</strong><strong>{money(order.total ?? 0)}</strong></div>
-          <div className="receipt-meta"><span>Pembayaran</span><strong>{order.paymentMethod ?? "-"}</strong></div>
-          {order.cashReceived !== null && <div className="receipt-meta"><span>Tunai / kembalian</span><span>{money(order.cashReceived)} / {money(order.changeAmount ?? 0)}</span></div>}
-          <div className="receipt-dash" /><p className="receipt-footer">{data.receiptFooter}</p>
-          <p className="receipt-ref">Ref. {order.paymentReference ?? "-"}</p>
-        </div>
+        <ReceiptPaper order={order} design={data.receiptDesign} width={data.receiptWidthMm} outletName={data.outletName} logoUrl={data.outletLogoUrl} footer={data.receiptFooter} />
         {order.tickets.map((ticket) => (
           <div className={`receipt-paper print-ticket ${receiptClass}`} key={`print-${ticket.id}`}>
             <div className="ticket-print-label">{ticket.station === "Kitchen" ? "🍳" : "☕"} TIKET {ticket.station.toUpperCase()}</div>

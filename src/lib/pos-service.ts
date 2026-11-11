@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { ApiError } from "@/lib/api";
 import { db } from "@/lib/db";
-import { PRINTER_BAUD_RATES } from "@/lib/types";
+import { PRINTER_BAUD_RATES, RECEIPT_FONT_SIZES } from "@/lib/types";
 import type {
   CashShift,
   CashShiftBreakdown,
@@ -27,6 +27,9 @@ import type {
   PosBootstrap,
   PosSummary,
   PrinterSettings,
+  ReceiptDesign,
+  ReceiptFontSize,
+  ReceiptToggle,
   DiningTable,
   MapShape,
   MapShapeKind,
@@ -586,6 +589,7 @@ export function getPosBootstrap(user: SessionUser): PosBootstrap {
     taxRateBasisPoints: Number(getSetting("tax_rate_basis_points", "1000")),
     receiptWidthMm: getSetting("receipt_width_mm", "80") === "58" ? 58 : 80,
     receiptFooter: getSetting("receipt_footer", "Terima kasih telah berkunjung!"),
+    receiptDesign: getReceiptDesign(),
     printer: getPrinterSettings(),
     tablePickerMode: getTablePickerMode(),
     products: canSell ? getProducts() : [],
@@ -2367,6 +2371,7 @@ export function updateSettings(user: SessionUser, rawUpdate: unknown) {
     upsertSetting("tax_rate_basis_points", String(update.taxRateBasisPoints));
   }
   if (update.receiptFooter !== undefined) upsertSetting("receipt_footer", update.receiptFooter);
+  if (update.receiptDesign !== undefined) saveReceiptDesign(update.receiptDesign);
   if (update.printerMode !== undefined) upsertSetting("printer_mode", update.printerMode);
   if (update.printerHost !== undefined) upsertSetting("printer_host", update.printerHost);
   if (update.printerPort !== undefined) upsertSetting("printer_port", String(update.printerPort));
@@ -2519,12 +2524,47 @@ function getPrinterConfig(): PrinterConfig {
   return { mode: "system", systemName: settings.systemName };
 }
 
+const RECEIPT_TOGGLE_SETTINGS: Record<ReceiptToggle, { key: string; fallback: boolean }> = {
+  showLogo: { key: "receipt_show_logo", fallback: true },
+  showCustomer: { key: "receipt_show_customer", fallback: true },
+  showDiscount: { key: "receipt_show_discount", fallback: true },
+  showTax: { key: "receipt_show_tax", fallback: true },
+  showCashChange: { key: "receipt_show_cash_change", fallback: true },
+  showNote: { key: "receipt_show_note", fallback: true },
+  showPaymentRef: { key: "receipt_show_payment_ref", fallback: false },
+};
+
+function getReceiptDesign(): ReceiptDesign {
+  const fontSize = getSetting("receipt_font_size", "normal");
+  const toggles = Object.fromEntries(
+    Object.entries(RECEIPT_TOGGLE_SETTINGS).map(([field, { key, fallback }]) => [
+      field,
+      getSetting(key, fallback ? "1" : "0") === "1",
+    ]),
+  );
+  return {
+    headerText: getSetting("receipt_header_text", ""),
+    fontSize: (RECEIPT_FONT_SIZES as readonly string[]).includes(fontSize) ? (fontSize as ReceiptFontSize) : "normal",
+    ...toggles,
+  } as ReceiptDesign;
+}
+
+function saveReceiptDesign(design: Partial<ReceiptDesign>) {
+  if (design.headerText !== undefined) upsertSetting("receipt_header_text", design.headerText);
+  if (design.fontSize !== undefined) upsertSetting("receipt_font_size", design.fontSize);
+  for (const [field, { key }] of Object.entries(RECEIPT_TOGGLE_SETTINGS)) {
+    const value = design[field as ReceiptToggle];
+    if (value !== undefined) upsertSetting(key, value ? "1" : "0");
+  }
+}
+
 function getReceiptPrintSettings() {
   const width: 58 | 80 = getSetting("receipt_width_mm", "80") === "58" ? 58 : 80;
   return {
     width,
     outletName: getSetting("outlet_name", "Senja"),
     footer: getSetting("receipt_footer", "Terima kasih telah berkunjung!"),
+    design: getReceiptDesign(),
   };
 }
 
@@ -2534,7 +2574,7 @@ function buildOrderPrintJobs(user: SessionUser, orderId: string) {
   const print = getReceiptPrintSettings();
   const activeTickets = order.tickets.filter((ticket) => ticket.status !== "Cancelled");
   const jobs = [
-    buildReceiptJob({ width: print.width, outletName: print.outletName, footer: print.footer, order }),
+    buildReceiptJob({ width: print.width, outletName: print.outletName, footer: print.footer, design: print.design, order }),
     ...activeTickets.map((ticket) =>
       buildTicketJob({ width: print.width, outletName: print.outletName, order, ticket })),
   ];

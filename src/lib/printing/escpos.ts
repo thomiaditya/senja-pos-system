@@ -1,4 +1,4 @@
-import type { Order, StationTicket } from "@/lib/types";
+import type { Order, ReceiptDesign, ReceiptFontSize, StationTicket } from "@/lib/types";
 
 export type PrinterWidth = 58 | 80;
 
@@ -12,13 +12,19 @@ const BOLD_ON = [ESC, 0x45, 1];
 const BOLD_OFF = [ESC, 0x45, 0];
 const SIZE_NORMAL = [GS, 0x21, 0x00];
 const SIZE_TALL = [GS, 0x21, 0x01];
+const SIZE_WIDE = [GS, 0x21, 0x10];
 const SIZE_LARGE = [GS, 0x21, 0x11];
+// Font B (9x17) lebih kecil dari font A default, sehingga muat lebih banyak karakter.
+const FONT_B = [ESC, 0x4d, 0x01];
 const FEED_LINES = [ESC, 0x64, 4];
 // Feed lalu potong kertas. Setiap dokumen diakhiri perintah ini.
 const CUT_PAPER = [GS, 0x56, 0x42, 0x03];
 
-export function columnsFor(width: PrinterWidth) {
-  return width === 58 ? 32 : 48;
+export function columnsFor(width: PrinterWidth, fontSize: ReceiptFontSize = "normal") {
+  if (fontSize === "kecil") return width === 58 ? 42 : 64;
+  const columns = width === 58 ? 32 : 48;
+  // Font double-width memakai dua kolom per karakter.
+  return fontSize === "besar" ? columns / 2 : columns;
 }
 
 // Printer thermal umumnya hanya andal untuk ASCII, jadi karakter lain didowngrade.
@@ -88,10 +94,14 @@ function row(left: string, right: string, columns: number) {
 class PrintDocument {
   private readonly parts: Buffer[] = [];
   readonly columns: number;
+  private readonly baseSize: number[];
 
-  constructor(width: PrinterWidth) {
-    this.columns = columnsFor(width);
+  constructor(width: PrinterWidth, fontSize: ReceiptFontSize = "normal") {
+    this.columns = columnsFor(width, fontSize);
+    this.baseSize = fontSize === "besar" ? SIZE_WIDE : SIZE_NORMAL;
     this.parts.push(Buffer.from(INIT));
+    if (fontSize === "kecil") this.command(FONT_B);
+    if (fontSize === "besar") this.command(SIZE_WIDE);
   }
 
   private command(bytes: number[]) {
@@ -114,7 +124,7 @@ class PrintDocument {
     if (options.bold) this.command(BOLD_ON);
     if (options.size) this.command(options.size);
     this.wrapped(value);
-    return this.command(SIZE_NORMAL).command(BOLD_OFF).command(ALIGN_LEFT);
+    return this.command(this.baseSize).command(BOLD_OFF).command(ALIGN_LEFT);
   }
 
   rule() {
@@ -131,7 +141,7 @@ class PrintDocument {
   bold(value: string, size: number[] = SIZE_NORMAL) {
     this.command(BOLD_ON).command(size);
     this.wrapped(value);
-    return this.command(SIZE_NORMAL).command(BOLD_OFF);
+    return this.command(this.baseSize).command(BOLD_OFF);
   }
 
   finish() {
@@ -148,40 +158,42 @@ export function buildReceiptJob(input: {
   width: PrinterWidth;
   outletName: string;
   footer: string;
+  design: ReceiptDesign;
   order: Order;
 }) {
-  const { order } = input;
-  const doc = new PrintDocument(input.width);
+  const { order, design } = input;
+  const doc = new PrintDocument(input.width, design.fontSize);
 
   doc.centered(input.outletName, { bold: true, size: SIZE_TALL });
+  if (design.headerText) doc.centered(design.headerText);
   doc.centered("Bukti pembayaran");
   doc.rule();
   doc.pair("No. pesanan", order.orderNumber);
   doc.pair("Waktu", formatDateTime(order.createdAt));
   doc.pair("Jenis", orderTypeLabel(order));
-  if (order.customerName) doc.wrapped(`Pelanggan: ${order.customerName}`);
+  if (order.customerName && design.showCustomer) doc.wrapped(`Pelanggan: ${order.customerName}`);
   doc.rule();
   for (const item of order.items) {
     doc.pair(`${item.quantity}x ${item.name}`, formatRupiah(item.unitPrice * item.quantity));
     if (item.modifier) doc.wrapped(`  ${item.modifier}`);
   }
-  if (order.note) doc.wrapped(`Catatan: ${order.note}`);
+  if (order.note && design.showNote) doc.wrapped(`Catatan: ${order.note}`);
   doc.rule();
   doc.pair("Subtotal", formatRupiah(order.subtotal ?? 0));
-  if ((order.discountAmount ?? 0) > 0) {
+  if (design.showDiscount && (order.discountAmount ?? 0) > 0) {
     doc.wrapped(`Diskon: ${order.discountName ?? "-"}`);
     doc.pair("Potongan", `-${formatRupiah(order.discountAmount ?? 0)}`);
   }
-  doc.pair("Pajak", formatRupiah(order.tax ?? 0));
+  if (design.showTax) doc.pair("Pajak", formatRupiah(order.tax ?? 0));
   doc.pair("TOTAL", formatRupiah(order.total ?? 0), { bold: true });
   doc.pair("Pembayaran", order.paymentMethod ?? "-");
-  if (order.cashReceived !== null) {
+  if (design.showCashChange && order.cashReceived !== null) {
     doc.pair("Tunai", formatRupiah(order.cashReceived));
     doc.pair("Kembalian", formatRupiah(order.changeAmount ?? 0));
   }
   doc.rule();
   doc.centered(input.footer);
-  doc.centered(`Ref. ${order.paymentReference ?? "-"}`);
+  if (design.showPaymentRef) doc.centered(`Ref. ${order.paymentReference ?? "-"}`);
   return doc.finish();
 }
 

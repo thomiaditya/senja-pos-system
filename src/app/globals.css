@@ -3075,7 +3075,19 @@ button:disabled {
   background: #fff;
   box-shadow: 0 3px 12px rgb(20 30 23 / 9%);
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  --receipt-text: 0.75rem;
+  --receipt-title: 0.875rem;
+  font-size: var(--receipt-text);
+}
+
+.receipt-font-kecil {
+  --receipt-text: 0.625rem;
+  --receipt-title: 0.75rem;
+}
+
+.receipt-font-besar {
+  --receipt-text: 0.9375rem;
+  --receipt-title: 1.125rem;
 }
 
 .receipt-58 {
@@ -3096,14 +3108,14 @@ button:disabled {
 
 .receipt-paper h3 {
   margin: 2px 0 4px;
-  font-size: 0.875rem;
+  font-size: var(--receipt-title);
   text-align: center;
 }
 
 .receipt-paper > p {
   margin: 0 0 8px;
   color: #6a766d;
-  font-size: 0.75rem;
+  font-size: var(--receipt-text);
   text-align: center;
 }
 
@@ -3125,7 +3137,7 @@ button:disabled {
 .receipt-meta strong,
 .receipt-line span,
 .receipt-line strong {
-  font-size: 0.75rem;
+  font-size: var(--receipt-text);
 }
 
 .receipt-meta strong,
@@ -3136,16 +3148,16 @@ button:disabled {
 
 .receipt-line small {
   color: #758077;
-  font-size: 0.75rem;
+  font-size: var(--receipt-text);
 }
 
 .receipt-total {
   margin-top: 8px;
-  font-size: 0.75rem;
+  font-size: var(--receipt-text);
 }
 
 .receipt-total strong {
-  font-size: 0.75rem;
+  font-size: var(--receipt-text);
 }
 
 .receipt-note {
@@ -3153,21 +3165,21 @@ button:disabled {
   margin: 7px 0 !important;
   color: #59665c !important;
   background: #f2f4f1;
-  font-size: 0.75rem !important;
+  font-size: var(--receipt-text) !important;
   text-align: left !important;
 }
 
 .receipt-paper .receipt-footer {
   margin-top: 11px;
   color: #46554a;
-  font-size: 0.75rem;
+  font-size: var(--receipt-text);
   font-weight: 600;
 }
 
 .receipt-paper .receipt-ref {
   margin-top: 6px;
   color: #879087;
-  font-size: 0.75rem;
+  font-size: var(--receipt-text);
 }
 
 .ticket-print-label {

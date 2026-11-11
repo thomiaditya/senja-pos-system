@@ -266,6 +266,23 @@ export type PrinterSettings = {
   drawerAutoOpen: boolean;
 };
 
+export const RECEIPT_FONT_SIZES = ["kecil", "normal", "besar"] as const;
+export type ReceiptFontSize = (typeof RECEIPT_FONT_SIZES)[number];
+
+export type ReceiptDesign = {
+  headerText: string;
+  fontSize: ReceiptFontSize;
+  showLogo: boolean;
+  showCustomer: boolean;
+  showDiscount: boolean;
+  showTax: boolean;
+  showCashChange: boolean;
+  showNote: boolean;
+  showPaymentRef: boolean;
+};
+
+export type ReceiptToggle = Exclude<keyof ReceiptDesign, "headerText" | "fontSize">;
+
 export type Receivable = {
   orderId: string;
   orderNumber: string;
@@ -285,6 +302,7 @@ export type PosBootstrap = {
   taxRateBasisPoints: number;
   receiptWidthMm: 58 | 80;
   receiptFooter: string;
+  receiptDesign: ReceiptDesign;
   printer: PrinterSettings;
   tablePickerMode: TablePickerMode;
   products: Product[];
