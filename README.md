@@ -28,6 +28,16 @@ Catatan:
 - Untuk Tanya AI, isi `GEMINI_API_KEY` di `.env.local` setelah instalasi. Fitur ini opsional.
 - Installer ini belum diuji di perangkat Windows nyata. Lakukan uji coba di laptop target sebelum dipakai untuk produksi. Tahap build bisa memakan beberapa menit di laptop spek rendah.
 
+## Pemeriksaan pembaruan
+
+Admin melihat status pembaruan di badge header dan di Pengaturan > **Pembaruan aplikasi**. Server membandingkan commit lokal (`HEAD`) dengan commit terbaru branch yang sama di `origin` lewat `git ls-remote`. Pemeriksaan berjalan saat halaman dibuka dan setiap 30 menit, dengan cache 10 menit di server. Tombol **Periksa sekarang** memaksa pemeriksaan ulang.
+
+- Pembaruan tidak dipasang otomatis. Untuk memasangnya, hentikan server lalu jalankan `scripts\windows\install.bat`, kemudian jalankan ulang `start-server.bat`. Data outlet tetap tersimpan.
+- Pemeriksaan membutuhkan Git dan koneksi internet di server. Jika tidak tersedia, status menjadi **Tidak tersedia** beserta alasannya.
+- Status **Tidak tersedia** juga muncul untuk instalasi ZIP (tanpa folder `.git`) dan saat repo berada di detached HEAD.
+- Jika riwayat lokal dan remote berbeda (misalnya ada commit lokal yang belum di-push), pembaruan tetap ditandai tersedia, tetapi `git pull --ff-only` di installer akan gagal. Hubungi teknisi dalam kondisi ini.
+- Endpoint: `GET /api/system/update` (admin). Tambahkan `?force=1` untuk melewati cache.
+
 ## Menjalankan aplikasi
 
 ```bash

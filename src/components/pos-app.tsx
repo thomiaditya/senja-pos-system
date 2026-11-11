@@ -58,6 +58,7 @@ import {
   printOverBrowserBluetooth,
   subscribeBrowserPrinter,
 } from "@/lib/browser-bluetooth-printer";
+import { AppUpdateBadge, AppUpdateCard } from "@/components/app-update";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -551,6 +552,7 @@ export function PosApp({
             <span className="font-medium">{activeLabel}</span>
           </nav>
           <div className="ml-auto flex items-center gap-3 text-sm text-muted-foreground">
+            {user.role === "admin" && <AppUpdateBadge />}
             <AssistantChat role={user.role} />
             <Button type="button" variant="outline" size="sm" onClick={() => startGuidedTour()}>
               <Compass data-icon="inline-start" />
@@ -3790,6 +3792,7 @@ function SettingsScreen({
         <TablePickerCard data={data} pending={pending} runAction={runAction} />
         <PrinterCard data={data} pending={pending} runAction={runAction} />
         <TaxReceiptCard data={data} pending={pending} runAction={runAction} />
+        <AppUpdateCard />
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Store className="size-5 text-muted-foreground" /> Denah meja</CardTitle>
